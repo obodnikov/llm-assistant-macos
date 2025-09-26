@@ -1,12 +1,4 @@
-// App event handlers
-app.whenReady().then(() => {
-  createMainWindow();
-  registerGlobalShortcuts();
-  initializeOpenAI(); // Initialize OpenAI client
-
-  // macOS specific: Re-create window when app icon is clicked
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindowsconst { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');
@@ -122,13 +114,13 @@ function toggleAssistant() {
     const { screen } = require('electron');
     const cursor = screen.getCursorScreenPoint();
     const display = screen.getDisplayNearestPoint(cursor);
-    
+
     // Position slightly offset from cursor
     assistantPanel.setPosition(
       Math.min(cursor.x + 20, display.bounds.width - 400),
       Math.min(cursor.y + 20, display.bounds.height - 520)
     );
-    
+
     assistantPanel.show();
     assistantPanel.focus();
   }
@@ -143,15 +135,6 @@ app.whenReady().then(() => {
   // macOS specific: Re-create window when app icon is clicked
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    }
-  });
-
-  // Hide dock icon (we want this to be a background app)
-  if (process.platform === 'darwin') {
-    app.dock.hide();
-  }
-});().length === 0) {
       createMainWindow();
     }
   });

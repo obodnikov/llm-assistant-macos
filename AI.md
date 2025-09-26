@@ -3,7 +3,7 @@
 
 # 🟡 Medium Version (rules + 1 example)
 
-```markdown
+
 # AI.md – Electron App Guidelines
 
 ## Purpose
@@ -28,7 +28,7 @@ Instructions for AI coding assistants to keep this Electron project secure and c
 ## Example
 
 ✅ **BrowserWindow with security**
-```js
+
 const mainWindow = new BrowserWindow({
   webPreferences: {
     contextIsolation: true,

@@ -176,8 +176,36 @@ app.on('will-quit', () => {
 
 // Import additional modules
 const { clipboard, Notification } = require('electron');
-const applescript = require('node-applescript');
+const { exec } = require('child_process');
 const OpenAI = require('openai');
+
+// Helper function for AppleScript execution
+function executeAppleScript(script) {
+  return new Promise((resolve, reject) => {
+    // Escape single quotes and wrap in double quotes for shell execution
+    const escapedScript = script.replace(/'/g, "'\"'\"'");
+    exec(`osascript -e '${escapedScript}'`, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`AppleScript error: ${error.message}`));
+      } else if (stderr) {
+        reject(new Error(`AppleScript stderr: ${stderr}`));
+      } else {
+        try {
+          // Try to parse as JSON if it looks like structured data
+          const trimmedOutput = stdout.trim();
+          if (trimmedOutput.startsWith('{') || trimmedOutput.startsWith('[')) {
+            resolve(JSON.parse(trimmedOutput));
+          } else {
+            resolve(trimmedOutput);
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, return raw string
+          resolve(stdout.trim());
+        }
+      }
+    });
+  });
+}
 
 // Privacy filtering patterns
 const sensitivePatterns = {
@@ -335,69 +363,52 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
 
 // Mail.app integration
 ipcMain.handle('get-mail-context', async () => {
-  return new Promise((resolve, reject) => {
-    const script = `
-      tell application "System Events"
-        set frontApp to name of first application process whose frontmost is true
-      end tell
-      
-      if frontApp is not "Mail" then
-        error "Mail app not active"
-      end if
-      
-      tell application "Mail"
-        try
-          set frontWindow to front window
-          set windowClass to class of frontWindow as string
-          
-          if windowClass contains "compose" then
-            -- Compose window
-            set currentMessage to frontWindow
-            return {
-              type: "compose",
-              content: content of currentMessage as string,
-              subject: subject of currentMessage,
-              recipients: (name of to recipients of currentMessage) as list
-            }
-            
-          else if windowClass contains "mailbox" then
-            -- Mailbox window
-            set selectedMessages to selection
-            set messageList to {}
-            
-            repeat with msg in selectedMessages
-              set msgContent to {
-                subject: subject of msg,
-                sender: sender of msg as string,
-                content: content of msg as string,
-                dateSent: date sent of msg
-              }
-              set end of messageList to msgContent
-            end repeat
-            
-            return {
-              type: "mailbox",
-              messages: messageList
-            }
-            
-          else
-            error "Unknown window type"
-          end if
-          
-        on error errMsg
-          error "Could not get mail context: " & errMsg
-        end try
-      end tell
-    `;
+  const script = `
+    tell application "System Events"
+      set frontApp to name of first application process whose frontmost is true
+    end tell
     
-    applescript.execString(script, (err, result) => {
-      if (err) {
-        reject(new Error(`Mail integration failed: ${err.message}`));
-      } else {
-        resolve(result);
-      }
-    });
-  });
+    if frontApp is not "Mail" then
+      error "Mail app not active"
+    end if
+    
+    tell application "Mail"
+      try
+        set frontWindow to front window
+        set windowClass to class of frontWindow as string
+        
+        if windowClass contains "compose" then
+          -- Compose window
+          set currentMessage to frontWindow
+          set messageContent to content of currentMessage as string
+          set messageSubject to subject of currentMessage
+          set messageRecipients to name of to recipients of currentMessage
+          
+          return "{\\"type\\": \\"compose\\", \\"content\\": \\"" & messageContent & "\\", \\"subject\\": \\"" & messageSubject & "\\", \\"recipients\\": [\\"" & (messageRecipients as string) & "\\"]}"
+          
+        else if windowClass contains "mailbox" then
+          -- Mailbox window
+          set selectedMessages to selection
+          set messageCount to count of selectedMessages
+          
+          return "{\\"type\\": \\"mailbox\\", \\"messageCount\\": " & messageCount & ", \\"messages\\": []}"
+          
+        else
+          error "Unknown window type: " & windowClass
+        end if
+        
+      on error errMsg
+        error "Could not get mail context: " & errMsg
+      end try
+    end tell
+  `;
+  
+  try {
+    const result = await executeAppleScript(script);
+    return result;
+  } catch (error) {
+    throw new Error(`Mail integration failed: ${error.message}`);
+  }
 });
 
 // Get selected text system-wide (placeholder for native module)

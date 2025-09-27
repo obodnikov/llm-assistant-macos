@@ -33,6 +33,9 @@ function createMainWindow() {
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    resizable: true,
+    minWidth: 300,
+    minHeight: 400,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -57,10 +60,10 @@ function createMainWindow() {
     mainWindow = null;
   });
 
-  // Open DevTools in development
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  // Open DevTools in development (commented out to reduce console noise)
+  // if (isDev) {
+  //   mainWindow.webContents.openDevTools();
+  // }
 }
 
 function createAssistantPanel() {
@@ -72,9 +75,11 @@ function createAssistantPanel() {
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    resizable: false,
     transparent: true,
     vibrancy: 'popover',
+    resizable: true,
+    minWidth: 300,
+    minHeight: 400,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

@@ -134,8 +134,8 @@ async function testConfiguration() {
 
 function saveConfiguration() {
   console.log('Step 5: Saving Configuration\n');
-  
-  const configPath = path.join(__dirname, '..', 'config', 'config.json');
+
+  const configPath = path.join(require('os').homedir(), 'Library', 'Application Support', 'llm-assistant-macos', 'config.json');
   const configDir = path.dirname(configPath);
   
   // Create config directory if it doesn't exist

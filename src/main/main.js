@@ -68,8 +68,8 @@ function createMainWindow() {
 
 function createAssistantPanel() {
   assistantPanel = new BrowserWindow({
-    width: 400,
-    height: 480,
+    width: 520,
+    height: 700,
     show: false,
     frame: false,
     alwaysOnTop: true,

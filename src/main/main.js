@@ -69,8 +69,8 @@ function createMainWindow() {
 function createAssistantPanel() {
   // This will be our floating assistant panel
   assistantPanel = new BrowserWindow({
-    width: 380,
-    height: 500,
+    width: 400,
+    height: 480,
     show: false,
     frame: false,
     alwaysOnTop: true,

@@ -4,11 +4,27 @@ class AssistantPanel {
     this.isProcessing = false;
     this.settings = {};
     
+    // Simple initialization - no complex waiting
     this.initializeElements();
     this.bindEvents();
     this.loadSettings();
     this.updateTheme();
     this.checkMailContext();
+    
+    // Remove loading overlay and show content
+    this.hideLoadingOverlay();
+  }
+
+  hideLoadingOverlay() {
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+      setTimeout(() => {
+        loadingOverlay.classList.add('hidden');
+        document.body.classList.add('loaded');
+      }, 100);
+    } else {
+      document.body.classList.add('loaded');
+    }
   }
 
   initializeElements() {
@@ -47,18 +63,34 @@ class AssistantPanel {
 
   bindEvents() {
     // Main controls
-    this.processBtn.addEventListener('click', () => this.processRequest());
-    this.clearBtn.addEventListener('click', () => this.clearAll());
-    this.closeBtn.addEventListener('click', () => this.hidePanel());
+    if (this.processBtn) {
+      this.processBtn.addEventListener('click', () => this.processRequest());
+    }
+    if (this.clearBtn) {
+      this.clearBtn.addEventListener('click', () => this.clearAll());
+    }
+    if (this.closeBtn) {
+      this.closeBtn.addEventListener('click', () => this.hidePanel());
+    }
     
     // Settings
-    this.settingsBtn.addEventListener('click', () => this.showSettings());
-    this.settingsClose.addEventListener('click', () => this.hideSettings());
-    this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+    if (this.settingsBtn) {
+      this.settingsBtn.addEventListener('click', () => this.showSettings());
+    }
+    if (this.settingsClose) {
+      this.settingsClose.addEventListener('click', () => this.hideSettings());
+    }
+    if (this.saveSettingsBtn) {
+      this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+    }
     
     // Results actions
-    this.copyResultBtn.addEventListener('click', () => this.copyResult());
-    this.applyResultBtn.addEventListener('click', () => this.applyResult());
+    if (this.copyResultBtn) {
+      this.copyResultBtn.addEventListener('click', () => this.copyResult());
+    }
+    if (this.applyResultBtn) {
+      this.applyResultBtn.addEventListener('click', () => this.applyResult());
+    }
     
     // Quick actions
     this.actionButtons.forEach(btn => {
@@ -69,12 +101,14 @@ class AssistantPanel {
     });
     
     // Input events
-    this.userInput.addEventListener('input', () => this.handleInputChange());
-    this.userInput.addEventListener('keydown', (e) => {
-      if (e.metaKey && e.key === 'Enter') {
-        this.processRequest();
-      }
-    });
+    if (this.userInput) {
+      this.userInput.addEventListener('input', () => this.handleInputChange());
+      this.userInput.addEventListener('keydown', (e) => {
+        if (e.metaKey && e.key === 'Enter') {
+          this.processRequest();
+        }
+      });
+    }
     
     // Privacy warning details
     const showFilteredBtn = document.getElementById('show-filtered');
@@ -85,6 +119,11 @@ class AssistantPanel {
 
   async loadSettings() {
     try {
+      if (!window.electronAPI) {
+        console.log('ElectronAPI not available yet');
+        return;
+      }
+
       // Load API key
       const apiKey = await window.electronAPI.getConfig('openai-api-key');
       if (apiKey && this.openaiKeyInput) {
@@ -120,8 +159,10 @@ class AssistantPanel {
 
   async updateTheme() {
     try {
-      const theme = await window.electronAPI.getSystemTheme();
-      document.documentElement.setAttribute('data-theme', theme);
+      if (window.electronAPI) {
+        const theme = await window.electronAPI.getSystemTheme();
+        document.documentElement.setAttribute('data-theme', theme);
+      }
     } catch (error) {
       console.error('Failed to get system theme:', error);
     }
@@ -129,8 +170,10 @@ class AssistantPanel {
 
   async checkMailContext() {
     try {
-      const context = await window.electronAPI.getMailContext();
-      this.updateMailContext(context);
+      if (window.electronAPI) {
+        const context = await window.electronAPI.getMailContext();
+        this.updateMailContext(context);
+      }
     } catch (error) {
       console.log('No mail context available:', error);
       this.hideMailContext();
@@ -144,20 +187,28 @@ class AssistantPanel {
     }
 
     this.currentContext = context;
-    this.contextIndicator.classList.remove('hidden');
+    if (this.contextIndicator) {
+      this.contextIndicator.classList.remove('hidden');
+    }
     
     if (context.type === 'compose') {
-      this.contextDetails.textContent = 'Composing email';
+      if (this.contextDetails) {
+        this.contextDetails.textContent = 'Composing email';
+      }
     } else if (context.type === 'mailbox') {
       const count = context.messages?.length || 0;
-      this.contextDetails.textContent = `${count} emails in current view`;
+      if (this.contextDetails) {
+        this.contextDetails.textContent = `${count} emails in current view`;
+      }
     }
     
     this.updateQuickActions(context);
   }
 
   hideMailContext() {
-    this.contextIndicator.classList.add('hidden');
+    if (this.contextIndicator) {
+      this.contextIndicator.classList.add('hidden');
+    }
     this.currentContext = null;
   }
 
@@ -187,8 +238,10 @@ class AssistantPanel {
       if (this.currentContext && this.currentContext.type === 'compose') {
         textToProcess = this.currentContext.content || '';
       } else {
-        textToProcess = await window.systemAPI.getSelectedText() || 
-                      await window.systemAPI.readClipboard() || '';
+        if (window.systemAPI) {
+          textToProcess = await window.systemAPI.getSelectedText() || 
+                        await window.systemAPI.readClipboard() || '';
+        }
       }
       
       // Generate appropriate prompt based on action
@@ -218,7 +271,9 @@ class AssistantPanel {
       }
       
       // Set the input and process
-      this.userInput.value = prompt;
+      if (this.userInput) {
+        this.userInput.value = prompt;
+      }
       await this.processWithText(textToProcess);
       
     } catch (error) {
@@ -241,6 +296,8 @@ Content: ${msg.content}
   }
 
   async handleInputChange() {
+    if (!this.userInput) return;
+    
     const text = this.userInput.value;
     
     if (!text.trim()) {
@@ -249,15 +306,19 @@ Content: ${msg.content}
     }
     
     try {
-      // Check for sensitive content
-      const filterResult = await window.electronAPI.filterSensitiveContent(text);
-      this.updatePrivacyStatus(filterResult);
+      if (window.electronAPI) {
+        // Check for sensitive content
+        const filterResult = await window.electronAPI.filterSensitiveContent(text);
+        this.updatePrivacyStatus(filterResult);
+      }
     } catch (error) {
       console.error('Privacy filtering failed:', error);
     }
   }
 
   updatePrivacyStatus(filterResult) {
+    if (!this.privacyStatus) return;
+
     if (filterResult.safe) {
       this.privacyStatus.textContent = '🔒 Safe';
       this.privacyStatus.className = 'privacy-safe';
@@ -270,16 +331,22 @@ Content: ${msg.content}
   }
 
   showPrivacyWarning(count) {
-    this.filteredCount.textContent = count;
-    this.privacyWarning.classList.remove('hidden');
+    if (this.filteredCount) {
+      this.filteredCount.textContent = count;
+    }
+    if (this.privacyWarning) {
+      this.privacyWarning.classList.remove('hidden');
+    }
   }
 
   hidePrivacyWarning() {
-    this.privacyWarning.classList.add('hidden');
+    if (this.privacyWarning) {
+      this.privacyWarning.classList.add('hidden');
+    }
   }
 
   async processRequest() {
-    if (this.isProcessing) return;
+    if (this.isProcessing || !this.userInput) return;
     
     const prompt = this.userInput.value.trim();
     if (!prompt) {
@@ -294,7 +361,7 @@ Content: ${msg.content}
         textToProcess = this.currentContext.content || '';
       } else if (this.currentContext && this.currentContext.type === 'mailbox') {
         textToProcess = this.formatEmailThread(this.currentContext.messages);
-      } else {
+      } else if (window.systemAPI) {
         textToProcess = await window.systemAPI.getSelectedText() || 
                       await window.systemAPI.readClipboard() || '';
       }
@@ -308,11 +375,15 @@ Content: ${msg.content}
   async processWithText(textToProcess, customPrompt = null) {
     if (this.isProcessing) return;
     
-    const prompt = customPrompt || this.userInput.value.trim();
+    const prompt = customPrompt || (this.userInput ? this.userInput.value.trim() : '');
     
     this.startProcessing();
     
     try {
+      if (!window.electronAPI) {
+        throw new Error('Electron API not available');
+      }
+
       // Filter sensitive content before sending
       const filterResult = await window.electronAPI.filterSensitiveContent(textToProcess);
       
@@ -338,38 +409,60 @@ Content: ${msg.content}
 
   startProcessing() {
     this.isProcessing = true;
-    this.processBtn.disabled = true;
-    this.processing.classList.remove('hidden');
-    this.results.classList.add('hidden');
+    if (this.processBtn) {
+      this.processBtn.disabled = true;
+    }
+    if (this.processing) {
+      this.processing.classList.remove('hidden');
+    }
+    if (this.results) {
+      this.results.classList.add('hidden');
+    }
   }
 
   stopProcessing() {
     this.isProcessing = false;
-    this.processBtn.disabled = false;
-    this.processing.classList.add('hidden');
+    if (this.processBtn) {
+      this.processBtn.disabled = false;
+    }
+    if (this.processing) {
+      this.processing.classList.add('hidden');
+    }
   }
 
   showResult(result) {
-    this.resultsContent.textContent = result;
-    this.results.classList.remove('hidden');
+    if (this.resultsContent) {
+      this.resultsContent.textContent = result;
+    }
+    if (this.results) {
+      this.results.classList.remove('hidden');
+    }
   }
 
   showError(message) {
-    this.resultsContent.textContent = `Error: ${message}`;
-    this.results.classList.remove('hidden');
+    if (this.resultsContent) {
+      this.resultsContent.textContent = `Error: ${message}`;
+    }
+    if (this.results) {
+      this.results.classList.remove('hidden');
+    }
   }
 
   async copyResult() {
     try {
+      if (!this.resultsContent || !window.systemAPI) return;
+      
       const text = this.resultsContent.textContent;
       await window.systemAPI.writeClipboard(text);
       
       // Show brief feedback
-      const originalText = this.copyResultBtn.textContent;
-      this.copyResultBtn.textContent = '✓';
-      setTimeout(() => {
-        this.copyResultBtn.textContent = originalText;
-      }, 1000);
+      if (this.copyResultBtn) {
+        const originalText = this.copyResultBtn.textContent;
+        this.copyResultBtn.textContent = '✓';
+        setTimeout(() => {
+          this.copyResultBtn.textContent = originalText;
+        }, 1000);
+      }
       
     } catch (error) {
       console.error('Failed to copy result:', error);
@@ -378,91 +471,122 @@ Content: ${msg.content}
 
   async applyResult() {
     // TODO: Implement applying result back to Mail.app or active application
-    // This will require additional native modules for text insertion
     console.log('Apply result - to be implemented');
   }
 
   clearAll() {
-    this.userInput.value = '';
-    this.results.classList.add('hidden');
+    if (this.userInput) {
+      this.userInput.value = '';
+    }
+    if (this.results) {
+      this.results.classList.add('hidden');
+    }
     this.hidePrivacyWarning();
-    this.privacyStatus.textContent = '🔒 Safe';
-    this.privacyStatus.className = 'privacy-safe';
+    if (this.privacyStatus) {
+      this.privacyStatus.textContent = '🔒 Safe';
+      this.privacyStatus.className = 'privacy-safe';
+    }
   }
 
   async hidePanel() {
     try {
-      await window.electronAPI.hideWindow();
+      if (window.electronAPI) {
+        await window.electronAPI.hideWindow();
+      }
     } catch (error) {
       console.error('Failed to hide window:', error);
     }
   }
 
   showSettings() {
-    this.settingsPanel.classList.remove('hidden');
+    if (this.settingsPanel) {
+      this.settingsPanel.classList.remove('hidden');
+    }
   }
 
   hideSettings() {
-    this.settingsPanel.classList.add('hidden');
+    if (this.settingsPanel) {
+      this.settingsPanel.classList.add('hidden');
+    }
   }
 
   async saveSettings() {
     try {
+      if (!window.electronAPI) {
+        throw new Error('Electron API not available');
+      }
+
       // Save API key
-      const apiKey = this.openaiKeyInput.value.trim();
-      if (apiKey) {
-        await window.electronAPI.setConfig('openai-api-key', apiKey);
+      if (this.openaiKeyInput) {
+        const apiKey = this.openaiKeyInput.value.trim();
+        if (apiKey) {
+          await window.electronAPI.setConfig('openai-api-key', apiKey);
+        }
       }
       
       // Save privacy settings
-      const filterApiKeys = document.getElementById('filter-api-keys').checked;
-      const filterCredentials = document.getElementById('filter-credentials').checked;
-      const filterFinancial = document.getElementById('filter-financial').checked;
-      const model = document.getElementById('model-select').value;
+      const filterApiKeysEl = document.getElementById('filter-api-keys');
+      const filterCredentialsEl = document.getElementById('filter-credentials');
+      const filterFinancialEl = document.getElementById('filter-financial');
+      const modelSelectEl = document.getElementById('model-select');
       
-      await window.electronAPI.setConfig('filter-api-keys', filterApiKeys);
-      await window.electronAPI.setConfig('filter-credentials', filterCredentials);
-      await window.electronAPI.setConfig('filter-financial', filterFinancial);
-      await window.electronAPI.setConfig('ai-model', model);
+      if (filterApiKeysEl) {
+        await window.electronAPI.setConfig('filter-api-keys', filterApiKeysEl.checked);
+      }
+      if (filterCredentialsEl) {
+        await window.electronAPI.setConfig('filter-credentials', filterCredentialsEl.checked);
+      }
+      if (filterFinancialEl) {
+        await window.electronAPI.setConfig('filter-financial', filterFinancialEl.checked);
+      }
+      if (modelSelectEl) {
+        await window.electronAPI.setConfig('ai-model', modelSelectEl.value);
+      }
       
       // Update local settings
       this.settings = {
-        filterApiKeys,
-        filterCredentials,
-        filterFinancial,
-        model
+        filterApiKeys: filterApiKeysEl?.checked ?? true,
+        filterCredentials: filterCredentialsEl?.checked ?? true,
+        filterFinancial: filterFinancialEl?.checked ?? true,
+        model: modelSelectEl?.value ?? 'gpt-4'
       };
       
       // Show success feedback
-      const originalText = this.saveSettingsBtn.textContent;
-      this.saveSettingsBtn.textContent = 'Saved!';
-      setTimeout(() => {
-        this.saveSettingsBtn.textContent = originalText;
-      }, 1500);
+      if (this.saveSettingsBtn) {
+        const originalText = this.saveSettingsBtn.textContent;
+        this.saveSettingsBtn.textContent = 'Saved!';
+        setTimeout(() => {
+          this.saveSettingsBtn.textContent = originalText;
+        }, 1500);
+      }
       
     } catch (error) {
       console.error('Failed to save settings:', error);
-      this.saveSettingsBtn.textContent = 'Error saving';
-      setTimeout(() => {
-        this.saveSettingsBtn.textContent = 'Save';
-      }, 1500);
+      if (this.saveSettingsBtn) {
+        this.saveSettingsBtn.textContent = 'Error saving';
+        setTimeout(() => {
+          this.saveSettingsBtn.textContent = 'Save';
+        }, 1500);
+      }
     }
   }
 
   showFilteredDetails() {
-    // TODO: Show detailed view of what was filtered
     alert('Filtered content details - to be implemented');
   }
 }
 
-// Initialize the assistant when DOM is loaded
+// Simple initialization - wait for DOM then create assistant
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, creating assistant...');
   window.assistant = new AssistantPanel();
 });
 
 // Handle theme changes
-if (window.electronAPI.onThemeChanged) {
+if (typeof window !== 'undefined' && window.electronAPI?.onThemeChanged) {
   window.electronAPI.onThemeChanged(() => {
-    window.assistant?.updateTheme();
+    if (window.assistant) {
+      window.assistant.updateTheme();
+    }
   });
 }

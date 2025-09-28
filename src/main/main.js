@@ -67,7 +67,6 @@ function createMainWindow() {
 }
 
 function createAssistantPanel() {
-  // This will be our floating assistant panel
   assistantPanel = new BrowserWindow({
     width: 400,
     height: 480,
@@ -76,6 +75,7 @@ function createAssistantPanel() {
     alwaysOnTop: true,
     skipTaskbar: true,
     transparent: true,
+    backgroundColor: 'rgba(0,0,0,0)',
     vibrancy: 'popover',
     resizable: true,
     minWidth: 300,
@@ -83,11 +83,18 @@ function createAssistantPanel() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: path.join(__dirname, '../preload/preload.js')
+      preload: path.join(__dirname, '../preload/preload.js'),
+      backgroundThrottling: false
     }
   });
 
   assistantPanel.loadFile(path.join(__dirname, '../renderer/assistant.html'));
+
+  // Show immediately after DOM is ready
+  assistantPanel.webContents.once('dom-ready', () => {
+    assistantPanel.show();
+    assistantPanel.focus();
+  });
 
   assistantPanel.on('blur', () => {
     if (!isDev) {
@@ -95,6 +102,7 @@ function createAssistantPanel() {
     }
   });
 }
+
 
 function registerGlobalShortcuts() {
   // Register Cmd+Option+L to show assistant
@@ -110,17 +118,17 @@ function registerGlobalShortcuts() {
 function toggleAssistant() {
   if (!assistantPanel) {
     createAssistantPanel();
+    return;
   }
 
   if (assistantPanel.isVisible()) {
     assistantPanel.hide();
   } else {
-    // Position panel at cursor or center of screen
+    // Position panel at cursor
     const { screen } = require('electron');
     const cursor = screen.getCursorScreenPoint();
     const display = screen.getDisplayNearestPoint(cursor);
 
-    // Position slightly offset from cursor
     assistantPanel.setPosition(
       Math.min(cursor.x + 20, display.bounds.width - 400),
       Math.min(cursor.y + 20, display.bounds.height - 520)

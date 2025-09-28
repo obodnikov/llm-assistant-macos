@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Assistant</title>
+    <link rel="stylesheet" href="css/assistant.css">
+</head>
+<body>
+    <div id="app" class="app-container">
+        <div class="assistant-panel">
+        <!-- Header with title and controls -->
+        <div class="panel-header">
+            <div class="title">
+                <span class="icon">🤖</span>
+                <span class="text">LLM Assistant</span>
+            </div>
+            <div class="controls">
+                <button id="settings-btn" class="control-btn" title="Settings">⚙️</button>
+                <button id="close-btn" class="control-btn" title="Close">✕</button>
+            </div>
+        </div>
+
+        <!-- Context indicator -->
+        <div id="context-indicator" class="context-indicator hidden">
+            <div class="context-icon">📧</div>
+            <div class="context-info">
+                <div class="context-title">Mail Context Detected</div>
+                <div class="context-details"></div>
+            </div>
+        </div>
+
+        <!-- Quick action buttons -->
+        <div id="quick-actions" class="quick-actions">
+            <button class="action-btn" data-action="summarize">
+                <span class="action-icon">📝</span>
+                <span class="action-text">Summarize</span>
+            </button>
+            <button class="action-btn" data-action="translate">
+                <span class="action-icon">🌐</span>
+                <span class="action-text">Translate</span>
+            </button>
+            <button class="action-btn" data-action="improve">
+                <span class="action-icon">✨</span>
+                <span class="action-text">Improve</span>
+            </button>
+            <button class="action-btn" data-action="reply">
+                <span class="action-icon">↩️</span>
+                <span class="action-text">Draft Reply</span>
+            </button>
+        </div>
+
+        <!-- Text input area -->
+        <div class="input-section">
+            <div class="input-header">
+                <label for="user-input">Describe what you need:</label>
+                <div class="privacy-indicator">
+                    <span id="privacy-status" class="privacy-safe">🔒 Safe</span>
+                </div>
+            </div>
+            <textarea 
+                id="user-input" 
+                placeholder="e.g., Help me write a professional response to this email thread..."
+                rows="3"
+            ></textarea>
+            
+            <!-- Privacy warning for filtered content -->
+            <div id="privacy-warning" class="privacy-warning hidden">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-text">
+                    <span id="filtered-count">0</span> sensitive items filtered
+                    <button id="show-filtered" class="link-btn">Show details</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing indicator -->
+        <div id="processing" class="processing hidden">
+            <div class="processing-spinner"></div>
+            <div class="processing-text">Processing with AI...</div>
+        </div>
+
+        <!-- Results area -->
+        <div id="results" class="results hidden">
+            <div class="results-header">
+                <span class="results-title">AI Response</span>
+                <div class="results-actions">
+                    <button id="copy-result" class="icon-btn" title="Copy">📋</button>
+                    <button id="apply-result" class="icon-btn" title="Apply">✅</button>
+                </div>
+            </div>
+            <div id="results-content" class="results-content"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="action-bar">
+            <button id="process-btn" class="primary-btn">
+                <span class="btn-icon">🚀</span>
+                <span class="btn-text">Process</span>
+            </button>
+            <button id="clear-btn" class="secondary-btn">Clear</button>
+        </div>
+
+        <!-- Settings panel (initially hidden) -->
+        <div id="settings-panel" class="settings-panel hidden">
+            <div class="settings-header">
+                <h3>Settings</h3>
+                <button id="settings-close" class="control-btn">✕</button>
+            </div>
+            
+            <div class="settings-content">
+                <div class="setting-group">
+                    <label for="openai-key">OpenAI API Key:</label>
+                    <input type="password" id="openai-key" placeholder="sk-...">
+                    <small class="help-text">Your API key is stored locally and encrypted</small>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Privacy Settings:</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filter-api-keys" checked>
+                            <span>Filter API keys and tokens</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filter-credentials" checked>
+                            <span>Filter login credentials</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filter-financial" checked>
+                            <span>Filter financial information</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="model-select">AI Model:</label>
+                    <select id="model-select">
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="settings-footer">
+                <button id="save-settings" class="primary-btn">Save</button>
+            </div>
+        </div>
+
+            <!-- Resize Handle -->
+            <div class="resize-handle"></div>
+        </div>
+    </div>
+
+    <script src="js/assistant.js"></script>
+</body>
+</html>

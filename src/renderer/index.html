@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Assistant - Main</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 200;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 2rem;
+        }
+
+        .status {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .hotkey {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 1rem 0;
+        }
+
+        .features {
+            text-align: left;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .feature {
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+        }
+
+        .dev-notice {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.5);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+
+        .controls {
+            margin-top: 2rem;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 LLM Assistant</h1>
+        <p class="subtitle">AI-powered assistant for macOS with Mail.app integration</p>
+
+        <div class="status">
+            <h3>🚀 Assistant is Running</h3>
+            <p>Press the global hotkey to activate:</p>
+            <div class="hotkey">⌘ + ⌥ + L</div>
+        </div>
+
+        <div class="features">
+            <h3>✨ Features</h3>
+            <div class="feature">
+                <span class="feature-icon">📧</span>
+                <span>Smart Mail.app integration with context detection</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🔒</span>
+                <span>Privacy-first with automatic sensitive content filtering</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">⚡</span>
+                <span>Quick actions: Summarize, Translate, Improve, Reply</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🎨</span>
+                <span>Native macOS UI with blur effects and dark mode</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🌐</span>
+                <span>Global text processing in any application</span>
+            </div>
+        </div>
+
+        <div class="dev-notice">
+            <strong>Development Mode:</strong> This window is only visible in development. 
+            In production, the assistant runs in the background and is accessed via the global hotkey.
+        </div>
+
+        <div class="controls">
+            <button onclick="openAssistant()">Open Assistant Panel</button>
+            <button onclick="openSettings()">Settings</button>
+            <button onclick="testMailIntegration()">Test Mail Integration</button>
+        </div>
+    </div>
+
+    <script>
+        // Development helpers
+        function openAssistant() {
+            // This would trigger the assistant panel
+            console.log('Opening assistant panel...');
+        }
+
+        function openSettings() {
+            console.log('Opening settings...');
+        }
+
+        function testMailIntegration() {
+            console.log('Testing Mail.app integration...');
+            window.electronAPI?.getMailContext()
+                .then(context => {
+                    console.log('Mail context:', context);
+                    alert('Mail context: ' + JSON.stringify(context, null, 2));
+                })
+                .catch(err => {
+                    console.error('Mail integration error:', err);
+                    alert('Mail integration test failed: ' + err.message);
+                });
+        }
+
+        // Show system info
+        window.electronAPI?.getSystemTheme().then(theme => {
+            console.log('System theme:', theme);
+        });
+    </script>
+</body>
+</html>

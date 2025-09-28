@@ -113,6 +113,15 @@ function registerGlobalShortcuts() {
   if (!ret) {
     console.log('Global shortcut registration failed');
   }
+  // Register Cmd+Q to quit when assistant is focused
+  const ret2 = globalShortcut.register('CommandOrControl+Q', () => {
+    if (assistantPanel && assistantPanel.isFocused()) {
+      app.quit();
+    }
+    if (!ret2) {
+    console.log('CommandOrControl+Q shortcut  registration failed');
+  }
+});
 }
 
 function toggleAssistant() {

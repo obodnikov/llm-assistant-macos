@@ -32,7 +32,8 @@ class AssistantPanel {
     this.userInput = document.getElementById('user-input');
     this.processBtn = document.getElementById('process-btn');
     this.clearBtn = document.getElementById('clear-btn');
-    this.closeBtn = document.getElementById('close-btn');
+    this.hideBtn = document.getElementById('hide-btn');     // NEW: Hide button
+    this.quitBtn = document.getElementById('quit-btn');     // NEW: Quit button
     this.settingsBtn = document.getElementById('settings-btn');
     
     // Context elements
@@ -69,8 +70,11 @@ class AssistantPanel {
     if (this.clearBtn) {
       this.clearBtn.addEventListener('click', () => this.clearAll());
     }
-    if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', () => this.hidePanel());
+    if (this.hideBtn) {
+      this.hideBtn.addEventListener('click', () => this.hidePanel());
+    }
+    if (this.quitBtn) {
+      this.quitBtn.addEventListener('click', () => this.quitApp());
     }
     
     // Settings
@@ -114,6 +118,19 @@ class AssistantPanel {
     const showFilteredBtn = document.getElementById('show-filtered');
     if (showFilteredBtn) {
       showFilteredBtn.addEventListener('click', () => this.showFilteredDetails());
+    }
+  }
+
+  // Add the quitApp method:
+  async quitApp() {
+    try {
+      if (window.electronAPI) {
+        await window.electronAPI.quitApp();
+      }
+    } catch (error) {
+      console.error('Failed to quit app:', error);
+      // Show error to user
+      alert('Failed to quit application. Please use Activity Monitor to force quit.');
     }
   }
 

@@ -222,13 +222,38 @@ body {
 
 /* ===== INPUT SECTION ===== */
 
+/* ===== INPUT SECTION ===== */
+
 .input-section {
-  flex: 1 1 auto;
+  flex: 1 1 auto;  /* Full height by default */
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 100px;
+  transition: flex 0.3s ease, max-height 0.3s ease;  /* Smooth transition */
+}
+
+/* Shrink when results are visible */
+.input-section.results-visible {
+  flex: 0 1 150px;
+  max-height: 150px;
+}
+
+#user-input {
+  width: 100%;
+  min-height: 60px;
+  flex: 1;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: var(--font-system);
+  font-size: 13px;
+  color: var(--text-primary);
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s ease;
 }
 
 .input-header {
@@ -315,10 +340,13 @@ body {
 }
 
 .results {
+  flex: 1 1 300px;  /* ← Grows to fill available space */
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--border-color);
-  max-height: 200px;
+  max-height: 400px;  /* ← More space for AI responses */
   overflow-y: auto;
+  display: flex;           /* ← ADD THIS */
+  flex-direction: column;  /* ← ADD THIS */
 }
 
 .results-header {
@@ -326,6 +354,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-md);
+  flex-shrink: 0;  /* ← ADD THIS - prevents header from shrinking */
 }
 
 .results-title {
@@ -347,6 +376,9 @@ body {
   font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
+  flex: 1;              /* ← ADD THIS - takes all available space */
+  overflow-y: auto;     /* ← ADD THIS - scrolls if content is too long */
+  min-height: 0;        /* ← ADD THIS - allows flex to shrink properly */
 }
 
 /* ===== ACTION BAR ===== */

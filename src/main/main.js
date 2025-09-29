@@ -2,6 +2,8 @@ const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme } = requi
 const path = require('path');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');
+// 1. ADD AT TOP - Import native modules
+const { nativeModules } = require('../native-modules');
 
 // Initialize config store
 const store = new Store();
@@ -10,8 +12,16 @@ const store = new Store();
 let mainWindow;
 let assistantPanel;
 
+// 2. ADD AFTER EXISTING VARIABLES
+let nativeModulesReady = false;
+
 // Development mode check
 const isDev = process.argv.includes('--dev');
+
+// 3. ADD GLOBAL CALLBACK
+global.nativeModuleCallback = (event, data) => {
+  handleNativeModuleEvent(event, data);
+};
 
 function createMainWindow() {
   // Load window state
@@ -148,9 +158,58 @@ function toggleAssistant() {
   }
 }
 
+// 4. ADD INITIALIZATION FUNCTION
+async function initializeNativeModules() {
+  try {
+    console.log('🔄 Initializing native modules...');
+    
+    const hasNativeModules = nativeModules.initialize();
+    
+    if (hasNativeModules) {
+      const status = await nativeModules.setupForAssistant();
+      nativeModulesReady = true;
+      console.log('✅ Native modules initialized');
+      console.log('   Status:', status);
+      
+      if (!status.permissions) {
+        const { Notification } = require('electron');
+        new Notification({
+          title: 'Permissions Required',
+          body: 'Grant accessibility permissions for full functionality'
+        }).show();
+      }
+    } else {
+      console.log('ℹ️ Native modules not available - using fallbacks');
+    }
+  } catch (error) {
+    console.error('⚠️ Native modules initialization failed:', error.message);
+  }
+}
+
+// 5. ADD EVENT HANDLER
+function handleNativeModuleEvent(event, data) {
+  console.log('Native module event:', event, data);
+  
+  switch (event) {
+    case 'context-menu-action':
+      if (assistantPanel && assistantPanel.webContents) {
+        assistantPanel.webContents.send('context-menu-action', data);
+      }
+      break;
+      
+    case 'text-selection':
+      if (assistantPanel && assistantPanel.webContents) {
+        assistantPanel.webContents.send('text-selected', data);
+      }
+      break;
+  }
+}
+
+
 // App event handlers
 app.whenReady().then(() => {
   createMainWindow();
+  await initializeNativeModules(); // ← ADD THIS
   registerGlobalShortcuts();
   initializeOpenAI(); // Initialize OpenAI client
 
@@ -177,6 +236,11 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   // Unregister all shortcuts
   globalShortcut.unregisterAll();
+
+  // ← ADD THIS
+  if (nativeModulesReady) {
+    nativeModules.cleanup();
+  }
 });
 
 // Import additional modules
@@ -422,6 +486,68 @@ ipcMain.handle('get-selected-text', async () => {
   // For now, return empty - we'll implement this with a native addon later
   return '';
 });
+
+// 8. ADD NEW IPC HANDLERS (at end of file)
+
+// Get native modules status
+ipcMain.handle('get-native-modules-status', () => {
+  if (!nativeModulesReady) {
+    return {
+      available: false,
+      textSelection: false,
+      contextMenu: false,
+      accessibility: false,
+      permissions: false
+    };
+  }
+  return {
+    available: true,
+    ...nativeModules.getStatus()
+  };
+});
+
+// Get selected text
+ipcMain.handle('get-selected-text', async () => {
+  if (nativeModulesReady) {
+    try {
+      const selection = await nativeModules.textSelection.getSelectedText();
+      return selection.text || '';
+    } catch (error) {
+      console.error('Text selection failed:', error);
+    }
+  }
+  return '';
+});
+
+// Insert text at cursor
+ipcMain.handle('insert-text-at-cursor', async (event, text) => {
+  if (nativeModulesReady) {
+    try {
+      return await nativeModules.accessibility.insertTextAtCursor(text);
+    } catch (error) {
+      console.error('Text insertion failed:', error);
+    }
+  }
+  
+  // Fallback to clipboard
+  const { clipboard } = require('electron');
+  clipboard.writeText(text);
+  return false;
+});
+
+// Request accessibility permissions
+ipcMain.handle('request-accessibility-permissions', async () => {
+  if (nativeModulesReady && nativeModules.accessibility) {
+    try {
+      return nativeModules.accessibility.requestPermissions();
+    } catch (error) {
+      console.error('Permission request failed:', error);
+      return false;
+    }
+  }
+  return false;
+});
+
 
 // Development helpers
 if (isDev) {

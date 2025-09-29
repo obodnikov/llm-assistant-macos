@@ -10,10 +10,69 @@ class AssistantPanel {
     this.loadSettings();
     this.updateTheme();
     this.checkMailContext();
+
+    this.nativeModulesAvailable = false;
+    this.checkNativeModules();
     
     // Remove loading overlay and show content
     this.hideLoadingOverlay();
   }
+
+  async checkNativeModules() {
+    try {
+      if (window.nativeModulesAPI) {
+        const status = await window.nativeModulesAPI.getStatus();
+        this.nativeModulesAvailable = status.available;
+        
+        if (this.nativeModulesAvailable) {
+          this.setupNativeModuleListeners();
+          console.log('✅ Native modules available');
+        } else {
+          console.log('ℹ️ Native modules not available - using fallbacks');
+        }
+      }
+    } catch (error) {
+      console.log('ℹ️ Native modules check failed:', error);
+    }
+  }
+
+  setupNativeModuleListeners() {
+    // Listen for text selection events
+    window.nativeModulesAPI?.onTextSelected((data) => {
+      console.log('Text selected:', data);
+      // Handle selected text
+    });
+
+    // Listen for context menu actions
+    window.nativeModulesAPI?.onContextMenuAction((data) => {
+      console.log('Context menu action:', data);
+      this.handleQuickAction(data.action, data.text);
+    });
+
+    // Listen for quick actions (from keyboard shortcuts)
+    window.nativeModulesAPI?.onQuickAction((data) => {
+      console.log('Quick action:', data);
+      this.handleQuickAction(data.action, data.text);
+    });
+  }
+
+  async handleQuickAction(action, text) {
+    // Pre-fill the action
+    if (this.userInput) {
+      const prompts = {
+        summarize: 'Summarize this text:',
+        translate: 'Translate this text:',
+        improve: 'Improve this text:',
+        reply: 'Draft a reply to this:'
+      };
+      
+      this.userInput.value = prompts[action] || action;
+    }
+    
+    // Process with the text
+    await this.processWithText(text);
+  }
+
 
   hideLoadingOverlay() {
     const loadingOverlay = document.querySelector('.loading-overlay');

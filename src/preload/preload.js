@@ -43,5 +43,19 @@ contextBridge.exposeInMainWorld('systemAPI', {
   showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body)
 });
 
+// Native modules support
+contextBridge.exposeInMainWorld('nativeModulesAPI', {
+  getStatus: () => ipcRenderer.invoke('get-native-modules-status'),
+  onTextSelected: (callback) => {
+    ipcRenderer.on('text-selected', (event, data) => callback(data));
+  },
+  onContextMenuAction: (callback) => {
+    ipcRenderer.on('context-menu-action', (event, data) => callback(data));
+  },
+  onQuickAction: (callback) => {
+    ipcRenderer.on('quick-action', (event, data) => callback(data));
+  }
+});
+
 // Log when preload script loads
 console.log('Preload script loaded successfully');

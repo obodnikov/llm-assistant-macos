@@ -291,7 +291,7 @@ class AssistantPanel {
       if (this.userInput) {
         this.userInput.value = prompt;
       }
-      await this.processWithText(textToProcess);
+      // await this.processWithText(textToProcess);
       
     } catch (error) {
       console.error('Quick action failed:', error);

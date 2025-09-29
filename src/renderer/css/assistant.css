@@ -223,12 +223,14 @@ body {
 /* ===== INPUT SECTION ===== */
 
 .input-section {
-  flex: 1 1 auto;
+  flex: 0 1 150px;  /* ← Fixed at 150px, can shrink if needed */
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 100px;  /* ← Minimum height */
+  max-height: 150px;  /* ← Maximum height */
+  overflow-y: auto;   /* ← Add scrolling if content overflows */
 }
 
 .input-header {
@@ -315,9 +317,10 @@ body {
 }
 
 .results {
+  flex: 1 1 300px;  /* ← Grows to fill available space */
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--border-color);
-  max-height: 200px;
+  max-height: 400px;  /* ← More space for AI responses */
   overflow-y: auto;
 }
 

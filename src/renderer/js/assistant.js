@@ -454,6 +454,8 @@ Content: ${msg.content}
     if (this.results) {
       this.results.classList.remove('hidden');
     }
+    // ADD THIS LINE - shrink input when showing results
+    document.querySelector('.input-section')?.classList.add('results-visible');    
   }
 
   showError(message) {
@@ -498,6 +500,10 @@ Content: ${msg.content}
     if (this.results) {
       this.results.classList.add('hidden');
     }
+
+    // ADD THIS LINE - expand input when hiding results
+    document.querySelector('.input-section')?.classList.remove('results-visible');
+
     this.hidePrivacyWarning();
     if (this.privacyStatus) {
       this.privacyStatus.textContent = '🔒 Safe';

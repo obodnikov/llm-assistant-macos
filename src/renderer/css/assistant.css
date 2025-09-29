@@ -345,6 +345,8 @@ body {
   border-bottom: 1px solid var(--border-color);
   max-height: 400px;  /* ← More space for AI responses */
   overflow-y: auto;
+  display: flex;           /* ← ADD THIS */
+  flex-direction: column;  /* ← ADD THIS */
 }
 
 .results-header {
@@ -352,6 +354,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-md);
+  flex-shrink: 0;  /* ← ADD THIS - prevents header from shrinking */
 }
 
 .results-title {
@@ -373,6 +376,9 @@ body {
   font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
+  flex: 1;              /* ← ADD THIS - takes all available space */
+  overflow-y: auto;     /* ← ADD THIS - scrolls if content is too long */
+  min-height: 0;        /* ← ADD THIS - allows flex to shrink properly */
 }
 
 /* ===== ACTION BAR ===== */

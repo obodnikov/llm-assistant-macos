@@ -7,13 +7,6 @@
 
 using namespace v8;
 
-namespace context_menu {
-
-// Global variables
-static Local<Function> menuCallback;
-static NSMenu* contextMenu = nullptr;
-static std::string lastSelectedText = "";
-
 // Custom NSMenuItem that stores action data
 @interface LLMMenuItem : NSMenuItem
 @property (nonatomic, strong) NSString* actionId;
@@ -22,38 +15,50 @@ static std::string lastSelectedText = "";
 @implementation LLMMenuItem
 @end
 
-// Menu action handler
-void HandleMenuAction(NSString* actionId, NSString* selectedText) {
-    if (menuCallback.IsEmpty()) return;
-    
-    Isolate* isolate = Isolate::GetCurrent();
-    HandleScope scope(isolate);
-    Local<Context> context = isolate->GetCurrentContext();
-    
-    Local<Object> result = Object::New(isolate);
-    result->Set(context, String::NewFromUtf8(isolate, "action").ToLocalChecked(),
-               String::NewFromUtf8(isolate, [actionId UTF8String]).ToLocalChecked());
-    result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
-               String::NewFromUtf8(isolate, [selectedText UTF8String]).ToLocalChecked());
-    
-    Local<Value> argv[] = { result };
-    menuCallback->Call(context, Null(isolate), 1, argv);
-}
-
 // Target-action for menu items
 @interface MenuActionTarget : NSObject
 - (void)menuAction:(id)sender;
 @end
 
+namespace context_menu {
+
+// Global variables
+static Global<Function> menuCallback;
+static NSMenu* contextMenu = nullptr;
+static std::string lastSelectedText = "";
+
+// Menu action handler
+void HandleMenuAction(NSString* actionId, NSString* selectedText) {
+    if (menuCallback.IsEmpty()) return;
+
+    Isolate* isolate = Isolate::GetCurrent();
+    HandleScope scope(isolate);
+    Local<Context> context = isolate->GetCurrentContext();
+
+    Local<Object> result = Object::New(isolate);
+    result->Set(context, String::NewFromUtf8(isolate, "action").ToLocalChecked(),
+               String::NewFromUtf8(isolate, [actionId UTF8String]).ToLocalChecked());
+    result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
+               String::NewFromUtf8(isolate, [selectedText UTF8String]).ToLocalChecked());
+
+    Local<Value> argv[] = { result };
+    Local<Function> callback = menuCallback.Get(isolate);
+    callback->Call(context, Null(isolate), 1, argv);
+}
+
+} // end namespace for forward declaration
+
 @implementation MenuActionTarget
 - (void)menuAction:(id)sender {
     if ([sender isKindOfClass:[LLMMenuItem class]]) {
         LLMMenuItem* item = (LLMMenuItem*)sender;
-        NSString* selectedText = [NSString stringWithUTF8String:lastSelectedText.c_str()];
-        HandleMenuAction(item.actionId, selectedText);
+        NSString* selectedText = [NSString stringWithUTF8String:context_menu::lastSelectedText.c_str()];
+        context_menu::HandleMenuAction(item.actionId, selectedText);
     }
 }
 @end
+
+namespace context_menu {
 
 static MenuActionTarget* menuTarget = nullptr;
 
@@ -177,7 +182,7 @@ void RegisterContextMenu(const FunctionCallbackInfo<Value>& args) {
         }
     }
     
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Start listening for right-clicks
@@ -185,7 +190,7 @@ void StartListening(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
     
     if (isListening) {
-        args.GetReturnValue().Set(Boolean::New(isolate, true));
+        args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
         return;
     }
     
@@ -222,7 +227,7 @@ void StartListening(const FunctionCallbackInfo<Value>& args) {
     CGEventTapEnable(rightClickTap, true);
     
     isListening = true;
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Stop listening for right-clicks
@@ -230,7 +235,7 @@ void StopListening(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
     
     if (!isListening) {
-        args.GetReturnValue().Set(Boolean::New(isolate, false));
+        args.GetReturnValue().Set(v8::Boolean::New(isolate, false));
         return;
     }
     
@@ -245,7 +250,7 @@ void StopListening(const FunctionCallbackInfo<Value>& args) {
     }
     
     isListening = false;
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Show context menu at specific location
@@ -260,7 +265,7 @@ void ShowContextMenu(const FunctionCallbackInfo<Value>& args) {
     }
     
     if (!contextMenu) {
-        args.GetReturnValue().Set(Boolean::New(isolate, false));
+        args.GetReturnValue().Set(v8::Boolean::New(isolate, false));
         return;
     }
     
@@ -280,11 +285,11 @@ void ShowContextMenu(const FunctionCallbackInfo<Value>& args) {
         [contextMenu popUpMenuPositioningItem:nil atLocation:nsPoint inView:nil];
     });
     
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Initialize the module
-void Initialize(Local<Object> exports) {
+void Initialize(Local<Object> exports, Local<Value> module, void* priv) {
     NODE_SET_METHOD(exports, "registerContextMenu", RegisterContextMenu);
     NODE_SET_METHOD(exports, "startListening", StartListening);
     NODE_SET_METHOD(exports, "stopListening", StopListening);

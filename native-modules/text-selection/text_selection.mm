@@ -11,7 +11,7 @@ using namespace v8;
 namespace text_selection {
 
 // Global variables for text selection monitoring
-static Local<Function> selectionCallback;
+static Global<Function> selectionCallback;
 static Isolate* isolate = nullptr;
 static bool isMonitoring = false;
 static CFMachPortRef eventTap = nullptr;
@@ -26,7 +26,7 @@ struct SelectionData {
 
 // Event tap callback for global text selection
 CGEventRef EventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon) {
-    if (type == kCGEventMouseUp || type == kCGEventKeyUp) {
+    if (type == kCGEventLeftMouseUp || type == kCGEventRightMouseUp || type == kCGEventKeyUp) {
         // Get the currently selected text using Accessibility APIs
         SelectionData* data = new SelectionData();
         
@@ -103,7 +103,8 @@ CGEventRef EventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
                                Number::New(isolate, data->location.y));
                     
                     Local<Value> argv[] = { result };
-                    selectionCallback->Call(context, Null(isolate), 1, argv);
+                    Local<Function> callback = selectionCallback.Get(isolate);
+                    callback->Call(context, Null(isolate), 1, argv);
                 }
                 
                 delete data;
@@ -131,14 +132,14 @@ void StartMonitoring(const FunctionCallbackInfo<Value>& args) {
     }
     
     if (isMonitoring) {
-        args.GetReturnValue().Set(Boolean::New(isolate, true));
+        args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
         return;
     }
     
     // Store callback
     Local<Function> callback = Local<Function>::Cast(args[0]);
     selectionCallback = Global<Function>(isolate, callback);
-    ::isolate = isolate;
+    text_selection::isolate = isolate;
     
     // Check for accessibility permissions
     if (!AXIsProcessTrusted()) {
@@ -155,7 +156,7 @@ void StartMonitoring(const FunctionCallbackInfo<Value>& args) {
     }
     
     // Create event tap
-    CGEventMask eventMask = CGEventMaskBit(kCGEventMouseUp) | CGEventMaskBit(kCGEventKeyUp);
+    CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseUp) | CGEventMaskBit(kCGEventRightMouseUp) | CGEventMaskBit(kCGEventKeyUp);
     eventTap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault,
                                eventMask, EventTapCallback, nullptr);
     
@@ -174,7 +175,7 @@ void StartMonitoring(const FunctionCallbackInfo<Value>& args) {
     CGEventTapEnable(eventTap, true);
     
     isMonitoring = true;
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Stop monitoring
@@ -182,7 +183,7 @@ void StopMonitoring(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
     
     if (!isMonitoring) {
-        args.GetReturnValue().Set(Boolean::New(isolate, false));
+        args.GetReturnValue().Set(v8::Boolean::New(isolate, false));
         return;
     }
     
@@ -197,7 +198,7 @@ void StopMonitoring(const FunctionCallbackInfo<Value>& args) {
     }
     
     isMonitoring = false;
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Get currently selected text synchronously
@@ -263,7 +264,7 @@ void GetSelectedText(const FunctionCallbackInfo<Value>& args) {
 }
 
 // Initialize the module
-void Initialize(Local<Object> exports) {
+void Initialize(Local<Object> exports, Local<Value> module, void* priv) {
     NODE_SET_METHOD(exports, "startMonitoring", StartMonitoring);
     NODE_SET_METHOD(exports, "stopMonitoring", StopMonitoring);
     NODE_SET_METHOD(exports, "getSelectedText", GetSelectedText);

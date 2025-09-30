@@ -13,19 +13,20 @@
         "-framework ApplicationServices"
       ],
       "cflags": [
-        "-std=c++11",
+        "-std=c++20",
         "-stdlib=libc++"
       ],
       "cflags_cc": [
-        "-std=c++11",
+        "-std=c++20",
         "-stdlib=libc++"
       ],
       "xcode_settings": {
         "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
         "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "10.15",
+        "MACOSX_DEPLOYMENT_TARGET": "11.0",
+        "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
         "OTHER_CPLUSPLUSFLAGS": [
-          "-std=c++11",
+          "-std=c++20",
           "-stdlib=libc++"
         ]
       }
@@ -43,19 +44,20 @@
         "-framework ApplicationServices"
       ],
       "cflags": [
-        "-std=c++11",
+        "-std=c++20",
         "-stdlib=libc++"
       ],
       "cflags_cc": [
-        "-std=c++11",
+        "-std=c++20",
         "-stdlib=libc++"
       ],
       "xcode_settings": {
         "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
         "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "10.15",
+        "MACOSX_DEPLOYMENT_TARGET": "11.0",
+        "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
         "OTHER_CPLUSPLUSFLAGS": [
-          "-std=c++11",
+          "-std=c++20",
           "-stdlib=libc++"
         ]
       }
@@ -73,19 +75,20 @@
         "-framework ApplicationServices"
       ],
       "cflags": [
-        "-std=c++11",
+        "-std=c++20",
         "-stdlib=libc++"
       ],
       "cflags_cc": [
-        "-std=c++11",
+        "-std=c++20",
         "-stdlib=libc++"
       ],
       "xcode_settings": {
         "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
         "CLANG_CXX_LIBRARY": "libc++",
-        "MACOSX_DEPLOYMENT_TARGET": "10.15",
+        "MACOSX_DEPLOYMENT_TARGET": "11.0",
+        "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
         "OTHER_CPLUSPLUSFLAGS": [
-          "-std=c++11",
+          "-std=c++20",
           "-stdlib=libc++"
         ]
       }

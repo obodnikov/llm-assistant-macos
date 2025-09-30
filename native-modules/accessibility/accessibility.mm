@@ -31,7 +31,7 @@ std::string CFStringToString(CFStringRef cfString) {
 void CheckAccessibilityPermissions(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
     bool hasPermissions = AXIsProcessTrusted();
-    args.GetReturnValue().Set(Boolean::New(isolate, hasPermissions));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, hasPermissions));
 }
 
 // Request accessibility permissions
@@ -44,7 +44,7 @@ void RequestAccessibilityPermissions(const FunctionCallbackInfo<Value>& args) {
     bool hasPermissions = AXIsProcessTrustedWithOptions(options);
     CFRelease(options);
     
-    args.GetReturnValue().Set(Boolean::New(isolate, hasPermissions));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, hasPermissions));
 }
 
 // Get frontmost application info
@@ -114,7 +114,7 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
             CFTypeRef position = nullptr;
             if (AXUIElementCopyAttributeValue(window, kAXPositionAttribute, &position) == kAXErrorSuccess && position) {
                 CGPoint point;
-                if (AXValueGetValue((AXValueRef)position, kAXValueCGPointType, &point)) {
+                if (AXValueGetValue((AXValueRef)position, (AXValueType)kAXValueCGPointType, &point)) {
                     Local<Object> pos = Object::New(isolate);
                     pos->Set(context, String::NewFromUtf8(isolate, "x").ToLocalChecked(), Number::New(isolate, point.x));
                     pos->Set(context, String::NewFromUtf8(isolate, "y").ToLocalChecked(), Number::New(isolate, point.y));
@@ -127,7 +127,7 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
             CFTypeRef size = nullptr;
             if (AXUIElementCopyAttributeValue(window, kAXSizeAttribute, &size) == kAXErrorSuccess && size) {
                 CGSize cgSize;
-                if (AXValueGetValue((AXValueRef)size, kAXValueCGSizeType, &cgSize)) {
+                if (AXValueGetValue((AXValueRef)size, (AXValueType)kAXValueCGSizeType, &cgSize)) {
                     Local<Object> sizeObj = Object::New(isolate);
                     sizeObj->Set(context, String::NewFromUtf8(isolate, "width").ToLocalChecked(), Number::New(isolate, cgSize.width));
                     sizeObj->Set(context, String::NewFromUtf8(isolate, "height").ToLocalChecked(), Number::New(isolate, cgSize.height));
@@ -139,11 +139,11 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
             // Check if window is focused
             CFTypeRef focused = nullptr;
             if (AXUIElementCopyAttributeValue(window, kAXFocusedAttribute, &focused) == kAXErrorSuccess && focused) {
-                Boolean isFocused = false;
+                bool isFocused = false;
                 if (CFBooleanGetValue((CFBooleanRef)focused)) {
                     isFocused = true;
                 }
-                windowInfo->Set(context, String::NewFromUtf8(isolate, "focused").ToLocalChecked(), Boolean::New(isolate, isFocused));
+                windowInfo->Set(context, String::NewFromUtf8(isolate, "focused").ToLocalChecked(), v8::Boolean::New(isolate, isFocused));
                 CFRelease(focused);
             }
             
@@ -212,7 +212,7 @@ void GetFocusedElement(const FunctionCallbackInfo<Value>& args) {
             CFTypeRef selectedRange = nullptr;
             if (AXUIElementCopyAttributeValue(focusedElement, kAXSelectedTextRangeAttribute, &selectedRange) == kAXErrorSuccess && selectedRange) {
                 CFRange range;
-                if (AXValueGetValue((AXValueRef)selectedRange, kAXValueCFRangeType, &range)) {
+                if (AXValueGetValue((AXValueRef)selectedRange, (AXValueType)kAXValueCFRangeType, &range)) {
                     Local<Object> rangeObj = Object::New(isolate);
                     rangeObj->Set(context, String::NewFromUtf8(isolate, "location").ToLocalChecked(), Number::New(isolate, range.location));
                     rangeObj->Set(context, String::NewFromUtf8(isolate, "length").ToLocalChecked(), Number::New(isolate, range.length));
@@ -271,7 +271,7 @@ void SetFocusedElementText(const FunctionCallbackInfo<Value>& args) {
     CFRelease(systemWideElement);
     CFRelease(cfText);
     
-    args.GetReturnValue().Set(Boolean::New(isolate, success));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, success));
 }
 
 // Insert text at cursor position
@@ -320,7 +320,7 @@ void InsertTextAtCursor(const FunctionCallbackInfo<Value>& args) {
     CFRelease(systemWideElement);
     CFRelease(cfText);
     
-    args.GetReturnValue().Set(Boolean::New(isolate, success));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, success));
 }
 
 // Simulate key press
@@ -361,7 +361,7 @@ void SimulateKeyPress(const FunctionCallbackInfo<Value>& args) {
     CFRelease(keyDown);
     CFRelease(keyUp);
     
-    args.GetReturnValue().Set(Boolean::New(isolate, true));
+    args.GetReturnValue().Set(v8::Boolean::New(isolate, true));
 }
 
 // Get element at point
@@ -417,7 +417,7 @@ void GetElementAtPoint(const FunctionCallbackInfo<Value>& args) {
 }
 
 // Initialize the module
-void Initialize(Local<Object> exports) {
+void Initialize(Local<Object> exports, Local<Value> module, void* priv) {
     NODE_SET_METHOD(exports, "checkAccessibilityPermissions", CheckAccessibilityPermissions);
     NODE_SET_METHOD(exports, "requestAccessibilityPermissions", RequestAccessibilityPermissions);
     NODE_SET_METHOD(exports, "getFrontmostApplication", GetFrontmostApplication);

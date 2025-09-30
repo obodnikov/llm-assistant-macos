@@ -3,7 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');
 // 1. ADD AT TOP - Import native modules
-const { nativeModules } = require('../native-modules');
+const { nativeModules } = require('../../native-modules');
 
 // Initialize config store
 const store = new Store();
@@ -207,9 +207,9 @@ function handleNativeModuleEvent(event, data) {
 
 
 // App event handlers
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createMainWindow();
-  await initializeNativeModules(); // ← ADD THIS
+  await initializeNativeModules();
   registerGlobalShortcuts();
   initializeOpenAI(); // Initialize OpenAI client
 
@@ -432,59 +432,82 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
 
 // Mail.app integration
 ipcMain.handle('get-mail-context', async () => {
-  const script = `
+  // First check if Mail is frontmost
+  const checkFrontAppScript = `
     tell application "System Events"
-      set frontApp to name of first application process whose frontmost is true
-    end tell
-    
-    if frontApp is not "Mail" then
-      error "Mail app not active"
-    end if
-    
-    tell application "Mail"
-      try
-        set frontWindow to front window
-        set windowClass to class of frontWindow as string
-        
-        if windowClass contains "compose" then
-          -- Compose window
-          set currentMessage to frontWindow
-          set messageContent to content of currentMessage as string
-          set messageSubject to subject of currentMessage
-          set messageRecipients to name of to recipients of currentMessage
-          
-          return "{\\"type\\": \\"compose\\", \\"content\\": \\"" & messageContent & "\\", \\"subject\\": \\"" & messageSubject & "\\", \\"recipients\\": [\\"" & (messageRecipients as string) & "\\"]}"
-          
-        else if windowClass contains "mailbox" then
-          -- Mailbox window
-          set selectedMessages to selection
-          set messageCount to count of selectedMessages
-          
-          return "{\\"type\\": \\"mailbox\\", \\"messageCount\\": " & messageCount & ", \\"messages\\": []}"
-          
-        else
-          error "Unknown window type: " & windowClass
-        end if
-        
-      on error errMsg
-        error "Could not get mail context: " & errMsg
-      end try
+      return name of first application process whose frontmost is true
     end tell
   `;
-  
-  try {
-    const result = await executeAppleScript(script);
-    return result;
-  } catch (error) {
-    throw new Error(`Mail integration failed: ${error.message}`);
-  }
-});
 
-// Get selected text system-wide (placeholder for native module)
-ipcMain.handle('get-selected-text', async () => {
-  // This would require a native module to access system text selection
-  // For now, return empty - we'll implement this with a native addon later
-  return '';
+  try {
+    const frontApp = await executeAppleScript(checkFrontAppScript);
+    if (frontApp.trim() !== 'Mail') {
+      return { type: 'not_active', error: 'Mail app is not the frontmost application' };
+    }
+
+    // Try to get selected message first (most common case - reading emails)
+    const getMessageScript = `
+      tell application "Mail"
+        try
+          set selectedMessages to selection
+          if (count of selectedMessages) is 0 then
+            return "NO_SELECTION"
+          end if
+
+          set firstMessage to item 1 of selectedMessages
+          set messageContent to content of firstMessage as string
+          set messageSubject to subject of firstMessage as string
+          set messageSender to sender of firstMessage as string
+
+          return messageContent & "|||SEP1|||" & messageSubject & "|||SEP2|||" & messageSender
+        on error errMsg
+          return "ERROR: " & errMsg
+        end try
+      end tell
+    `;
+
+    const result = await executeAppleScript(getMessageScript);
+
+    if (result === 'NO_SELECTION') {
+      // No message selected, try to get compose window content
+      const getComposeScript = `
+        tell application "Mail"
+          try
+            set currentMessage to front window
+            set messageContent to content of currentMessage as string
+            set messageSubject to subject of currentMessage as string
+            return messageContent & "|||SEPARATOR|||" & messageSubject
+          on error errMsg
+            return "ERROR: " & errMsg
+          end try
+        end tell
+      `;
+
+      const composeResult = await executeAppleScript(getComposeScript);
+      if (composeResult.startsWith('ERROR:')) {
+        return { type: 'error', error: 'No email selected or compose window open' };
+      }
+
+      const [content, subject] = composeResult.split('|||SEPARATOR|||');
+      return { type: 'compose', content, subject };
+    }
+
+    if (result.startsWith('ERROR:')) {
+      return { type: 'error', error: result.substring(7) };
+    }
+
+    // Parse the selected message
+    const parts = result.split('|||SEP1|||');
+    const content = parts[0];
+    const restParts = parts[1].split('|||SEP2|||');
+    const subject = restParts[0];
+    const sender = restParts[1];
+
+    return { type: 'viewer', content, subject, sender };
+
+  } catch (error) {
+    return { type: 'error', error: `Mail integration failed: ${error.message}` };
+  }
 });
 
 // 8. ADD NEW IPC HANDLERS (at end of file)

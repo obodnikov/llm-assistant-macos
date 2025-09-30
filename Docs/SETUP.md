@@ -1,44 +1,112 @@
-# 🚀 LLM Assistant - Detailed Setup Guide
+# 🚀 LLM Assistant - Setup Guide
 
 ## Prerequisites
 
 ### System Requirements
-- **macOS**: 10.15 (Catalina) or later
-- **Node.js**: Version 18.0 or later
+- **macOS**: 11.0 (Big Sur) or later
+- **Node.js**: Version 24.9.0 (or compatible version)
 - **RAM**: Minimum 4GB, recommended 8GB+
-- **Storage**: 200MB for app + dependencies
+- **Storage**: 500MB for app + dependencies + native modules
+- **Xcode Command Line Tools**: Required for native modules
 
 ### Required Accounts
 - **OpenAI Account**: [Sign up here](https://platform.openai.com/signup)
 - **API Access**: Ensure you have API credits available
 
-## Installation Methods
+## Quick Start
 
-### Method 1: Clone Repository (Recommended)
+### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/llm-assistant-macos.git
+git clone https://github.com/obodnikov/llm-assistant-macos.git
 cd llm-assistant-macos
 
 # Install dependencies
 npm install
 
-# Run setup wizard
-npm run setup-wizard
+# Build native modules (automatically runs during npm install)
+npm run build-native
+
+# Check permissions
+npm run check-permissions
 
 # Start the app
 npm start
 ```
 
-### Method 2: Download Release
-1. Go to [Releases](https://github.com/yourusername/llm-assistant-macos/releases)
-2. Download the latest `.dmg` file
-3. Mount the disk image and drag to Applications
-4. Run the app and follow the setup wizard
+### First Run
+1. **Grant Permissions** when prompted:
+   - **Accessibility** - Required for text selection and manipulation
+   - **Automation for Mail.app** - Required for Mail integration
+2. **Configure API Key** via Settings panel (⚙️)
+3. **Test Mail Integration** - Open Mail.app, select an email, press `Cmd+Shift+L`
 
-## Step-by-Step Configuration
+## Native Modules Setup
 
-### 1. OpenAI API Key Setup
+### Automatic Build (Recommended)
+Native modules build automatically during `npm install` via the `postinstall` script:
+```bash
+npm install  # Builds native modules automatically
+```
+
+### Manual Build
+If automatic build fails:
+```bash
+# Clean previous builds
+npm run clean-native
+
+# Build for Electron
+npm run build-native
+
+# Verify build
+npm run check-permissions
+```
+
+### Build Requirements
+The following are required for building native modules:
+
+1. **Xcode Command Line Tools**
+   ```bash
+   xcode-select --install
+   ```
+
+2. **Python 3** (usually pre-installed)
+   ```bash
+   python3 --version  # Should be 3.7 or later
+   ```
+
+3. **Node.js** (you already have this)
+   ```bash
+   node --version  # Should be 24.9.0 or compatible
+   ```
+
+### Troubleshooting Native Modules
+
+#### Issue: "Module version mismatch"
+```bash
+# Rebuild for Electron
+npm run clean-native
+npm run build-native
+```
+
+#### Issue: "gyp: No Xcode or CLT version detected"
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# If already installed, reset the path
+sudo xcode-select --reset
+```
+
+#### Issue: "Permission denied" during build
+```bash
+# Fix npm permissions
+sudo chown -R $(whoami) ~/.npm
+```
+
+## Configuration
+
+### 1. OpenAI API Key
 
 #### Getting Your API Key
 1. Visit [OpenAI API Keys](https://platform.openai.com/api-keys)
@@ -47,249 +115,355 @@ npm start
 4. Name it "LLM Assistant macOS"
 5. Copy the key (starts with `sk-`)
 
-#### Important API Key Notes
-- **Keep it secret**: Never share your API key
-- **Usage billing**: You'll be charged based on usage
-- **Rate limits**: Free tier has lower limits
-- **Monitoring**: Check usage at [OpenAI Usage](https://platform.openai.com/usage)
+#### Setting Your API Key
+1. Launch the app
+2. Click the Settings icon (⚙️)
+3. Paste your API key
+4. Click "Save"
 
-### 2. Privacy Settings Configuration
+#### API Key Security
+- ✅ **Never share** your API key
+- ✅ **Monitor usage** at [OpenAI Usage](https://platform.openai.com/usage)
+- ✅ **Rotate keys** periodically (every 3-6 months)
+- ✅ The app stores keys securely in macOS Keychain
+
+### 2. Privacy Settings
 
 #### Default Privacy Filters
-The app automatically filters these by default:
+Enabled by default:
 - **API Keys**: `sk-`, `pk_`, `AIza`, etc.
-- **Credentials**: Password, login, username patterns
+- **Credentials**: Password patterns, auth tokens
 - **Financial**: Credit cards, SSN, bank routing numbers
-- **Personal**: Email addresses, phone numbers (optional)
+- **Personal**: Email addresses (optional), phone numbers (optional)
 
-#### Customizing Privacy Settings
-```json
-{
-  "filter-api-keys": true,     // Recommended: true
-  "filter-credentials": true,  // Recommended: true
-  "filter-financial": true,    // Recommended: true
-  "filter-emails": false,      // Optional: your choice
-  "filter-phones": false       // Optional: your choice
-}
-```
+#### Customizing Filters
+Open Settings (⚙️) to toggle individual privacy filters.
 
 ### 3. Model Selection
 
 #### Available Models
 | Model | Speed | Quality | Cost | Best For |
 |-------|-------|---------|------|----------|
-| **GPT-4** | Slow | Excellent | High | Complex emails, analysis |
-| **GPT-4 Turbo** | Medium | Very Good | Medium | General use, good balance |
+| **GPT-4o** | Medium | Excellent | Medium | General use, best balance |
+| **GPT-4 Turbo** | Medium | Excellent | Medium | Complex analysis |
 | **GPT-3.5 Turbo** | Fast | Good | Low | Quick tasks, summaries |
 
-#### Cost Estimation (Approximate)
-- **GPT-4**: $0.03-0.06 per request
-- **GPT-4 Turbo**: $0.01-0.03 per request  
-- **GPT-3.5 Turbo**: $0.002-0.004 per request
+#### Recommended Settings
+- **Default**: GPT-4o (good balance of speed, quality, cost)
+- **Complex emails**: GPT-4 Turbo
+- **Quick summaries**: GPT-3.5 Turbo
 
-*Actual costs depend on text length and complexity*
+## macOS Permissions
 
-## Advanced Configuration
+### Required Permissions
 
-### Mail.app Permissions
+#### 1. Accessibility Access (Required)
+**What it enables**:
+- System-wide text selection monitoring
+- Reading window information
+- Direct text insertion at cursor
 
-#### Granting Accessibility Access
-1. **System Preferences** → **Security & Privacy**
-2. Click **Privacy** tab → **Accessibility**
-3. Click the lock icon and enter your password
-4. Click **+** and add **LLM Assistant**
-5. Ensure the checkbox is checked
+**How to grant**:
+1. **System Settings** → **Privacy & Security** → **Accessibility**
+2. Click the lock icon (🔒) and enter your password
+3. Click **+** and add "Electron" or "LLM Assistant"
+4. Toggle the checkbox **ON**
+5. Restart the app
 
-#### Troubleshooting Mail Integration
+#### 2. Automation for Mail.app (Required for Mail features)
+**What it enables**:
+- Reading email content
+- Getting email metadata (sender, subject)
+- Detecting Mail.app context
+
+**How to grant**:
+1. **System Settings** → **Privacy & Security** → **Automation**
+2. Find "Electron" or "LLM Assistant"
+3. Enable **Mail** checkbox
+4. Restart the app
+
+#### 3. Screen Recording (Optional)
+**What it enables**:
+- Advanced context menu positioning
+
+**How to grant**:
+1. **System Settings** → **Privacy & Security** → **Screen Recording**
+2. Add "Electron" or "LLM Assistant"
+3. Toggle **ON**
+
+### Permission Verification
+```bash
+npm run check-permissions
+```
+
+This checks:
+- ✅ Accessibility permissions
+- ✅ Automation permissions for Mail.app
+- ✅ Native modules built and ready
+- ⚠️ Screen Recording (manual verification)
+
+### Troubleshooting Permissions
+
+#### "Permission Denied" Errors
+1. Open **System Settings** → **Privacy & Security**
+2. Remove "Electron" from **all** privacy sections
+3. Restart the app
+4. macOS will prompt for permissions again
+5. Grant all requested permissions
+
+#### Testing Mail Integration
 ```bash
 # Test AppleScript access manually
-osascript -e 'tell application "Mail" to get name of front window'
-
-# If permission denied, reset privacy database
-tccutil reset AppleEvents com.yourname.llm-assistant
+osascript -e 'tell application "Mail" to get class of front window as string'
 ```
 
-### Global Hotkey Customization
+If this returns an error, reset privacy:
+```bash
+tccutil reset AppleEvents
+```
 
-#### Default Hotkey: `Cmd + Option + L`
-To change the hotkey, edit `src/main/main.js`:
+## Features & Usage
+
+### Mail.app Integration
+
+#### Workflow
+1. **Open Mail.app** and select an email
+2. **Keep Mail frontmost** (active window)
+3. Press **`Cmd+Shift+L`** to open LLM Assistant
+4. Should show: **"Mail Context Detected - Viewing email: [subject]"**
+
+#### Quick Actions
+When Mail context is detected:
+- **📝 Summarize** - Concise email summary
+- **🌐 Translate** - Translate email content
+- **✨ Improve** - Improve email text
+- **💬 Draft Reply** - Generate reply draft
+
+#### Usage Pattern
+1. Click a quick action button (e.g., "Summarize")
+2. Edit the prompt if needed
+3. Click "Process"
+4. AI processes the email content
+
+### Native Module Features
+
+When native modules are loaded successfully:
+- ✅ Real-time text selection monitoring
+- ✅ System-wide context menus (right-click)
+- ✅ Direct text insertion at cursor position
+- ✅ Window and application information access
+
+### Fallback Mode
+
+If native modules fail to load:
+- ⚠️ App runs in **fallback mode**
+- ✅ Mail.app integration still works (via AppleScript)
+- ⚠️ Limited text selection capabilities
+- ⚠️ No context menu integration
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+Shift+L` | Toggle LLM Assistant panel |
+| `Cmd+,` | Open Settings |
+| `Cmd+W` | Close panel |
+| `Cmd+Q` | Quit application |
+| `Esc` | Hide panel |
+
+### Customizing Shortcuts
+Edit `src/main/main.js`:
 ```javascript
-// Find this line and modify:
-globalShortcut.register('CommandOrControl+Alt+L', () => {
-  toggleAssistant();
+// Find and modify:
+globalShortcut.register('CommandOrControl+Shift+L', () => {
+  toggleAssistantPanel();
 });
-
-// Examples of alternatives:
-// 'CommandOrControl+Shift+A'  // Cmd+Shift+A
-// 'CommandOrControl+`'        // Cmd+Backtick
-// 'F1'                        // F1 key
-```
-
-### Custom Privacy Patterns
-
-#### Adding Custom Filters
-Edit your config file at:
-`~/Library/Application Support/llm-assistant-macos/config.json`
-
-```json
-{
-  "custom-patterns": [
-    {
-      "name": "company-secrets",
-      "pattern": "COMPANY-SECRET-\\d+",
-      "description": "Company secret codes"
-    },
-    {
-      "name": "project-codes", 
-      "pattern": "PROJ-[A-Z]{3}-\\d{4}",
-      "description": "Internal project codes"
-    }
-  ]
-}
-```
-
-## Development Setup
-
-### Running in Development Mode
-```bash
-# Start with DevTools open
-npm run dev
-
-# View main process logs
-tail -f ~/Library/Logs/llm-assistant-macos/main.log
-
-# View renderer process logs
-# Open DevTools in the app window
-```
-
-### Building from Source
-```bash
-# Build the application
-npm run build
-
-# The .dmg will be created in dist/
-open dist/
-```
-
-### Code Signing (Optional)
-For distribution outside of development:
-```bash
-# Install Xcode command line tools
-xcode-select --install
-
-# Sign the app (requires Apple Developer account)
-codesign --force --deep --sign "Developer ID Application: Your Name" dist/mac/LLM\ Assistant.app
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### 1. "Permission Denied" Errors
-**Cause**: macOS security restrictions
-**Solution**:
-- Grant Accessibility permissions
-- Allow the app in System Preferences → Security & Privacy
+#### 1. Native Modules Not Loading
+**Symptoms**: Console shows "Native modules not available - using fallbacks"
 
-#### 2. "API Key Invalid" Errors
-**Cause**: Incorrect or expired API key
 **Solution**:
-- Verify key starts with `sk-`
-- Check OpenAI account status
-- Re-run setup wizard: `npm run setup-wizard`
+```bash
+npm run clean-native
+npm run build-native
+npm start
+```
 
-#### 3. "Mail Context Not Detected"
-**Cause**: Mail.app not active or permission issues
+#### 2. Mail Context Not Detected
+**Cause**: Mail.app not frontmost or no email selected
+
 **Solution**:
-- Ensure Mail.app is frontmost application
-- Grant AppleScript permissions
-- Test manually: Open Mail.app, then activate assistant
+- Click on an email in Mail.app to select it
+- Make sure Mail.app is the active window (frontmost)
+- Open LLM Assistant while Mail is active
 
-#### 4. High Memory Usage
-**Cause**: Electron overhead or memory leaks
+#### 3. "Draft Reply" Button Disabled
+**Cause**: No email selected or wrong context type
+
+**Solution**:
+- Select an email in Mail.app (should be highlighted)
+- Make sure you're viewing a received email (not composing)
+
+#### 4. AI Processing Wrong Text
+**Cause**: Stored text workflow issue
+
+**Solution**:
+- Click a quick action button (e.g., "Summarize")
+- Wait for prompt to appear
+- Click "Process" button
+- Do NOT manually type or paste text when using quick actions
+
+#### 5. High Memory Usage
+**Cause**: Electron overhead
+
 **Solution**:
 - Restart the app periodically
-- Check Activity Monitor for memory usage
-- Use lighter AI models (GPT-3.5 Turbo)
+- Monitor with Activity Monitor
+- Use lighter models (GPT-3.5 Turbo)
+
+### Debug Mode
+
+#### Enable Debug Logging
+```bash
+# Open DevTools
+Cmd+Option+I (while app is running)
+
+# Check console for:
+# - "📧 Mail context received:"
+# - "🎯 handleQuickAction - currentContext:"
+# - "✅ Native modules available"
+```
+
+#### Verbose Build Logging
+```bash
+DEBUG=electron-rebuild npm run build-native
+```
 
 ### Reset to Factory Settings
 ```bash
 # Stop the app
-pkill -f "llm-assistant"
+pkill -f "Electron"
 
-# Remove all configuration
+# Remove configuration
 rm -rf ~/Library/Application\ Support/llm-assistant-macos/
-rm -rf ~/Library/Preferences/com.yourname.llm-assistant.plist
 
-# Restart setup
-npm run setup-wizard
-```
+# Rebuild native modules
+npm run clean-native
+npm run build-native
 
-### Debug Mode
-```bash
-# Enable debug logging
-export DEBUG=llm-assistant:*
+# Restart
 npm start
-
-# View detailed logs
-tail -f ~/Library/Logs/llm-assistant-macos/debug.log
 ```
 
-## Performance Optimization
+## Development
+
+### Running in Development Mode
+```bash
+# Start with DevTools auto-open
+npm run dev
+```
+
+### Building for Distribution
+```bash
+# Build native modules
+npm run build-native
+
+# Build app
+npm run build
+
+# Output in dist/
+open dist/
+```
+
+### Testing Changes
+```bash
+# Test native modules
+npm run test-native
+
+# Check permissions
+npm run check-permissions
+
+# Run app
+npm start
+```
+
+## Performance Tips
 
 ### Reducing API Costs
-1. **Use GPT-3.5 Turbo** for simple tasks
-2. **Enable privacy filtering** to reduce token usage
-3. **Be specific** in prompts to get concise responses
-4. **Monitor usage** regularly in OpenAI dashboard
+1. Use **GPT-3.5 Turbo** for simple tasks
+2. Enable **privacy filtering** to reduce token usage
+3. Be **specific** in prompts
+4. Monitor usage at [OpenAI Dashboard](https://platform.openai.com/usage)
 
-### Improving Response Speed
-1. **Choose faster models** (GPT-3.5 Turbo vs GPT-4)
-2. **Reduce context size** (shorter email threads)
-3. **Use quick actions** instead of custom prompts
-4. **Stable internet connection** for API calls
+### Improving Speed
+1. Choose faster models (GPT-3.5 Turbo)
+2. Use quick action buttons instead of custom prompts
+3. Ensure stable internet connection
+4. Close unused Mail.app windows
 
 ### Memory Management
-1. **Restart app daily** if used heavily
-2. **Close unused Mail.app windows**
-3. **Monitor system memory** with Activity Monitor
-4. **Use latest macOS version** for best performance
+1. Restart app if memory usage > 500MB
+2. Monitor with Activity Monitor
+3. Close DevTools when not debugging
 
 ## Security Best Practices
 
-### API Key Security
-- ✅ **Never share** your API key
-- ✅ **Monitor usage** for unexpected activity
-- ✅ **Rotate keys** periodically (every 3-6 months)
-- ✅ **Use organization accounts** for team usage
-
 ### Data Privacy
-- ✅ **Enable all privacy filters** by default
-- ✅ **Review filtered content** before processing
-- ✅ **Avoid processing** highly sensitive documents
-- ✅ **Use local models** for maximum privacy (future feature)
+- ✅ Enable **all privacy filters** by default
+- ✅ Review content before processing sensitive data
+- ✅ Avoid processing highly confidential documents
+- ✅ All data sent to OpenAI API follows their privacy policy
+
+### API Key Security
+- ✅ Keys stored securely in macOS Keychain
+- ✅ Never logged or displayed in console
+- ✅ Rotate keys every 3-6 months
+- ✅ Monitor for unexpected API usage
 
 ### Network Security
-- ✅ **Use secure networks** (avoid public WiFi for sensitive content)
-- ✅ **Monitor network traffic** if concerned about data
-- ✅ **Consider VPN** for additional privacy layer
+- ✅ Use secure networks (avoid public WiFi for sensitive content)
+- ✅ All OpenAI API calls use HTTPS encryption
+- ✅ Consider VPN for additional privacy
 
 ## Getting Help
 
 ### Support Channels
-- **GitHub Issues**: [Report bugs](https://github.com/yourusername/llm-assistant-macos/issues)
-- **Discussions**: [Feature requests and questions](https://github.com/yourusername/llm-assistant-macos/discussions)
-- **Email**: your.email@example.com
+- **GitHub Issues**: [Report bugs](https://github.com/obodnikov/llm-assistant-macos/issues)
+- **GitHub Discussions**: [Feature requests and questions](https://github.com/obodnikov/llm-assistant-macos/discussions)
 
 ### Before Reporting Issues
-1. **Check logs**: `~/Library/Logs/llm-assistant-macos/`
-2. **Test with simple case**: Try basic functionality first
-3. **Include system info**: macOS version, app version
-4. **Provide steps to reproduce**: Detailed reproduction steps
+1. **Check console logs** (Cmd+Option+I)
+2. **Run permission check**: `npm run check-permissions`
+3. **Try clean rebuild**: `npm run clean-native && npm run build-native`
+4. **Include system info**: macOS version, Node version, Electron version
+5. **Provide reproduction steps**: Detailed step-by-step instructions
 
-### Contributing
-See [DEVELOPMENT.md](DEVELOPMENT.md) for contribution guidelines.
+### Useful Information for Bug Reports
+```bash
+# Get version info
+node --version
+npm --version
+./node_modules/.bin/electron --version
+
+# Check native module status
+npm run check-permissions
+
+# Check build status
+ls -la build/Release/
+```
+
+## Next Steps
+
+- 📖 Read [integration_guide.md](integration_guide.md) for technical details
+- 🔒 Review [PRIVACY.md](PRIVACY.md) for data handling information
+- 💻 See [API-KEYS.md](API-KEYS.md) for API configuration help
 
 ---
 
-**Next**: Read [API-KEYS.md](API-KEYS.md) for detailed API configuration help.
+**Version**: 0.2.0 with Native Modules
+**Last Updated**: 2025-09-30

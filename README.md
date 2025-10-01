@@ -307,6 +307,16 @@ We welcome contributions! Please see our contributing guidelines:
 
 See [GitHub Issues](https://github.com/obodnikov/llm-assistant-macos/issues) for current bugs and feature requests.
 
+## 📋 TODO / Roadmap
+
+### Planned Features
+- **Apply Button Implementation**: Direct insertion of AI-generated results back to Mail.app or active application
+- **Enhanced Context Menu Integration**: System-wide right-click actions for text selection
+- **Multi-App Support**: Extend beyond Mail.app to Notes, Messages, and other apps
+- **Conversation History**: Save and retrieve previous AI interactions
+- **Custom Quick Actions**: User-defined quick action templates
+- **Offline Mode**: Local LLM support for privacy-sensitive operations
+
 ## 📝 License
 
 MIT License - see [LICENSE](LICENSE) file for details.

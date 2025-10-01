@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');

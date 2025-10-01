@@ -1,187 +1,357 @@
 # 🤖 LLM Assistant for macOS
 
-AI-powered assistant with native Mail.app integration for macOS. Get intelligent help with email composition, text processing, and more using OpenAI's GPT models.
+AI-powered assistant with **native macOS integration** and **Mail.app support**. Get intelligent help with email composition, text processing, and more using OpenAI's GPT models.
 
-![Demo](https://via.placeholder.com/600x400/007AFF/FFFFFF?text=LLM+Assistant+Demo)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![macOS](https://img.shields.io/badge/macOS-11.0+-blue)
+![Node](https://img.shields.io/badge/node-24.9.0-brightgreen)
 
 ## ✨ Features
 
-### 🎯 Core Functionality
-- **Global Hotkey Access**: `Cmd + Option + L` to summon from anywhere
-- **Mail.app Integration**: Smart email context detection and assistance
-- **Privacy Protection**: Automatic filtering of sensitive content
-- **Native macOS UI**: Blur effects, dark mode, and system integration
+### 🎯 Native macOS Integration
+- **C++/Objective-C Modules**: Deep system-level integration
+- **Real-time Text Selection**: Monitor text selection system-wide
+- **Context Menus**: Right-click integration in any app
+- **Direct Text Manipulation**: Insert text at cursor position
+- **Window Management**: Access window and application information
 
-### 📧 Email Intelligence
-- **Context Awareness**: Understands email threads and composition state
-- **Smart Actions**: Summarize, translate, improve, and draft replies
-- **Thread Analysis**: Process entire email conversations
-- **Professional Tone**: AI-optimized for business communication
+### 📧 Mail.app Intelligence
+- **Smart Context Detection**: Automatically detects viewing/composing emails
+- **Email Content Extraction**: Reads email content, subject, sender
+- **Quick Actions**: Summarize, translate, improve, draft reply
+- **Edit-Before-Process**: Customize prompts before processing
+- **Graceful Fallbacks**: Works even when Mail.app not active
 
 ### 🔒 Privacy & Security
-- **Local Filtering**: Sensitive content filtered before cloud processing
-- **Configurable Protection**: API keys, credentials, financial data
+- **Local Content Filtering**: Sensitive data filtered before cloud processing
+- **Automatic Detection**: API keys, credentials, financial information
 - **Visual Feedback**: Highlighted sensitive content with warnings
-- **Encrypted Storage**: API keys stored securely using Electron Store
+- **Secure Storage**: API keys stored in macOS Keychain
+- **No Data Retention**: Content not stored locally or in logs
+
+### 🚀 Performance
+- **Native Module Performance**: Fast C++ modules for system operations
+- **Graceful Degradation**: AppleScript fallbacks when native unavailable
+- **Memory Efficient**: Optimized for low memory footprint
+- **Quick Response**: Optimized API calls and processing
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- macOS 10.15 or later
-- Node.js 18+ and npm
-- OpenAI API key ([get one here](https://platform.openai.com/api-keys))
+- **macOS**: 11.0 (Big Sur) or later
+- **Node.js**: 24.9.0 or compatible
+- **Xcode Command Line Tools**: For building native modules
+- **OpenAI API key**: [Get one here](https://platform.openai.com/api-keys)
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/llm-assistant-macos.git
-   cd llm-assistant-macos
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Run setup wizard**
-   ```bash
-   npm run setup-wizard
-   ```
-   The wizard will guide you through:
-   - OpenAI API key configuration
-   - Privacy settings
-   - Model selection
-   - Connection testing
-
-4. **Start the application**
-   ```bash
-   npm start
-   ```
-
-### Development Mode
 ```bash
-npm run dev
+# Clone the repository
+git clone https://github.com/obodnikov/llm-assistant-macos.git
+cd llm-assistant-macos
+
+# Install dependencies (builds native modules automatically)
+npm install
+
+# Verify native modules
+npm run check-permissions
+
+# Start the application
+npm start
 ```
-Runs with DevTools open and shows the main window for debugging.
+
+### First Run Setup
+
+1. **Grant Permissions** when prompted:
+   - ✅ Accessibility Access (required)
+   - ✅ Automation for Mail.app (required for Mail features)
+
+2. **Configure API Key**:
+   - Click Settings icon (⚙️)
+   - Paste OpenAI API key
+   - Select preferred model
+
+3. **Test It**:
+   - Open Mail.app, select an email
+   - Press `Cmd+Shift+L`
+   - Click "Summarize"
 
 ## 📖 Usage
 
-### Basic Usage
-1. **Launch**: The app runs in the background (no dock icon)
-2. **Activate**: Press `Cmd + Option + L` anywhere to open the assistant
-3. **Process Text**: 
-   - Select text and use quick actions
-   - Type custom requests in the input field
-   - Assistant automatically detects Mail.app context
+### Global Access
+- **Hotkey**: `Cmd+Shift+L` - Open assistant from anywhere
+- **Menu Bar**: Click app icon in menu bar
+- **Mail Integration**: Auto-detects when Mail.app is active
 
 ### Mail.app Integration
-- **Composing Email**: Assistant detects draft and offers composition help
-- **Reading Emails**: Provides thread summaries and reply suggestions  
-- **Context Actions**: Smart suggestions based on email content
 
-### Quick Actions
-- **📝 Summarize**: Extract key points from text or email threads
-- **🌐 Translate**: Translate to/from any language
-- **✨ Improve**: Enhance tone, clarity, and professionalism
-- **↩️ Draft Reply**: Generate contextual email responses
+#### Quick Actions
+When viewing an email in Mail.app:
+- **📝 Summarize** - Extract key points concisely
+- **🌐 Translate** - Translate email content
+- **✨ Improve** - Enhance clarity and tone
+- **💬 Draft Reply** - Generate contextual reply
 
-### Privacy Features
-The assistant automatically detects and filters:
-- API keys and authentication tokens
-- Login credentials and passwords
-- Financial information (credit cards, SSN, bank details)
-- Configurable custom patterns
+#### Workflow
+1. Open Mail.app and select an email
+2. Keep Mail as frontmost window
+3. Press `Cmd+Shift+L`
+4. Click a quick action (e.g., "Summarize")
+5. Edit prompt if desired
+6. Click "Process"
 
-Filtered content is highlighted and replaced with `[FILTERED]` before processing.
+### Custom Prompts
+Instead of quick actions, type custom requests:
+- "Extract action items from this email"
+- "Translate to Spanish with formal tone"
+- "Draft a polite decline response"
 
 ## ⚙️ Configuration
 
-### Settings Panel
-Access via the gear icon in the assistant panel:
-- **API Configuration**: OpenAI key and model selection
-- **Privacy Settings**: Enable/disable content filtering
-- **Custom Patterns**: Add your own sensitive content patterns
+### Model Selection
+| Model | Speed | Quality | Cost | Best For |
+|-------|-------|---------|------|----------|
+| GPT-4o | Medium | Excellent | Medium | General use (recommended) |
+| GPT-4 Turbo | Medium | Excellent | Medium | Complex analysis |
+| GPT-3.5 Turbo | Fast | Good | Low | Quick summaries |
 
-### Models Available
-- **GPT-4**: Most capable, best for complex tasks
-- **GPT-4 Turbo**: Good balance of speed and capability  
-- **GPT-3.5 Turbo**: Fastest and most cost-effective
+### Privacy Settings
+Configure in Settings (⚙️):
+- ✅ API Keys filtering (`sk-`, `pk-`, etc.)
+- ✅ Credentials filtering (passwords, tokens)
+- ✅ Financial data (credit cards, SSN)
+- ⚠️ Email addresses (optional)
+- ⚠️ Phone numbers (optional)
 
-### Config File Location
-Settings are stored in: `~/Library/Application Support/llm-assistant-macos/config.json`
+### Keyboard Shortcuts
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+Shift+L` | Toggle assistant |
+| `Cmd+,` | Open settings |
+| `Esc` | Hide panel |
+| `Cmd+W` | Close panel |
+| `Cmd+Q` | Quit application |
 
-## 🔧 Development
+## 🔧 Native Modules
 
-### Project Structure
-```
-llm-assistant-macos/
-├── src/
-│   ├── main/           # Electron main process
-│   │   └── main.js     # App entry point, window management
-│   ├── renderer/       # UI components
-│   │   ├── assistant.html
-│   │   ├── css/
-│   │   └── js/
-│   └── preload/        # Secure IPC bridge
-│       └── preload.js
-├── scripts/            # Setup and build scripts
-├── config/             # Configuration files
-└── docs/               # Documentation
-```
+### What's Included
+Three native C++/Objective-C modules provide system-level integration:
 
-### Key Components
-- **Main Process**: Window management, global shortcuts, system integration
-- **Renderer Process**: UI, user interactions, display logic
-- **Preload Script**: Secure communication bridge between main and renderer
-- **Privacy Filter**: Sensitive content detection and filtering
-- **Mail Bridge**: AppleScript integration with Mail.app
+1. **Text Selection Module** (`text_selection.node`)
+   - Real-time text selection monitoring
+   - System-wide text detection
+   - Event-driven callbacks
 
-### Building
+2. **Context Menu Module** (`context_menu.node`)
+   - Right-click integration
+   - Custom menu actions
+   - Cross-application support
+
+3. **Accessibility Module** (`accessibility.node`)
+   - Window information access
+   - Direct text insertion
+   - Application state detection
+
+### Building Native Modules
+
 ```bash
-npm run build
-```
-Creates a distributable `.dmg` file in the `dist` folder.
+# Clean previous builds
+npm run clean-native
 
-### Native Modules
-For advanced system integration (text selection, context menus), native modules can be added:
+# Build for Electron
+npm run build-native
+
+# Check build status
+npm run check-permissions
+```
+
+### Troubleshooting
+
+**Module version mismatch:**
 ```bash
+npm run clean-native
 npm run build-native
 ```
 
+**Build failures:**
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Verify installation
+xcode-select -p
+```
+
+See [Docs/SETUP.md](Docs/SETUP.md) for detailed troubleshooting.
+
+## 📁 Project Structure
+
+```
+llm-assistant-macos/
+├── binding.gyp                    # Native modules build config
+├── package.json                   # Dependencies & scripts
+│
+├── native-modules/                # Native C++/Obj-C modules
+│   ├── index.js                   # JS wrapper
+│   ├── text-selection/
+│   │   └── text_selection.mm
+│   ├── context-menu/
+│   │   └── context_menu.mm
+│   └── accessibility/
+│       └── accessibility.mm
+│
+├── build/Release/                 # Compiled native modules
+│   ├── accessibility.node
+│   ├── context_menu.node
+│   └── text_selection.node
+│
+├── src/
+│   ├── main/
+│   │   └── main.js               # Main process with native integration
+│   ├── renderer/
+│   │   ├── assistant.html        # UI
+│   │   ├── css/
+│   │   └── js/
+│   │       └── assistant.js      # UI logic with native support
+│   └── preload/
+│       └── preload.js            # IPC bridge with native APIs
+│
+├── scripts/
+│   └── check-permissions.js      # Permission verification
+│
+└── Docs/
+    ├── SETUP.md                  # Detailed setup guide
+    ├── integration_guide.md      # Technical integration docs
+    └── PRIVACY.md                # Privacy policy
+```
+
+## 🛠️ Development
+
+### Running in Development
+```bash
+# Start with DevTools
+npm run dev
+
+# Start normally
+npm start
+
+# Build for distribution
+npm run build
+```
+
+### Key Technologies
+- **Electron 28.3.3** - Desktop app framework
+- **Node.js v18** (via Electron) - Runtime
+- **C++20** - Native modules
+- **Objective-C** - macOS integration
+- **AppleScript** - Mail.app automation
+- **OpenAI API** - AI processing
+
+### Testing
+```bash
+# Test native modules
+node -e "console.log(require('./build/Release/accessibility.node'))"
+
+# Check permissions
+npm run check-permissions
+
+# Test Mail integration
+# 1. Open Mail.app
+# 2. Select an email
+# 3. Run: npm start
+```
+
+## 📊 System Requirements
+
+### Minimum
+- **macOS**: 11.0 (Big Sur)
+- **RAM**: 4GB
+- **Storage**: 500MB
+- **Network**: Internet for API calls
+
+### Recommended
+- **macOS**: 12.0 (Monterey) or later
+- **RAM**: 8GB+
+- **Storage**: 1GB
+- **Network**: Stable broadband
+
 ## 🤝 Contributing
 
-### Development Setup
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Follow the existing code style and structure
-4. Test thoroughly on macOS
-5. Submit a pull request
+We welcome contributions! Please see our contributing guidelines:
 
-### Code Style
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature-name`
+3. **Follow** existing code style
+4. **Test** thoroughly on macOS
+5. **Submit** a pull request
+
+### Development Guidelines
 - Use modern JavaScript (ES6+)
-- Follow the project structure guidelines
-- Keep files under 800 lines
-- Add comments for complex logic
+- Follow existing project structure
+- Document complex logic
 - Test privacy filtering thoroughly
+- Ensure native modules build successfully
 
-## 📄 License
+## 📄 Documentation
+
+- **[SETUP.md](Docs/SETUP.md)** - Detailed setup and configuration
+- **[integration_guide.md](Docs/integration_guide.md)** - Technical integration details
+- **[PRIVACY.md](Docs/PRIVACY.md)** - Privacy policy and data handling
+
+## 🐛 Known Issues
+
+- Native modules require rebuild when updating Electron version
+- Mail.app must be frontmost for context detection
+- Some Mail.app windows return generic "window" class name (handled)
+
+See [GitHub Issues](https://github.com/obodnikov/llm-assistant-macos/issues) for current bugs and feature requests.
+
+## 📋 TODO / Roadmap
+
+### Planned Features
+- **Apply Button Implementation**: Direct insertion of AI-generated results back to Mail.app or active application
+- **Enhanced Context Menu Integration**: System-wide right-click actions for text selection
+- **Multi-App Support**: Extend beyond Mail.app to Notes, Messages, and other apps
+- **Conversation History**: Save and retrieve previous AI interactions
+- **Custom Quick Actions**: User-defined quick action templates
+- **Offline Mode**: Local LLM support for privacy-sensitive operations
+
+## 📝 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- Built with [Electron](https://electronjs.org/)
-- AI powered by [OpenAI](https://openai.com/)
-- UI inspired by native macOS design patterns
-- Privacy-first approach for secure AI assistance
+- **Electron** - Desktop app framework
+- **OpenAI** - GPT models and API
+- **node-gyp** - Native module build system
+- **NAN** - Native Abstractions for Node.js
+- macOS design patterns and guidelines
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/llm-assistant-macos/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/llm-assistant-macos/discussions)
-- **Email**: your.email@example.com
+- **Issues**: [GitHub Issues](https://github.com/obodnikov/llm-assistant-macos/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/obodnikov/llm-assistant-macos/discussions)
+- **Documentation**: [Docs/](Docs/)
+
+## 🔄 Version History
+
+### v0.2.0 (Current)
+- ✅ Native C++/Objective-C modules integration
+- ✅ Enhanced Mail.app support with robust content extraction
+- ✅ Edit-before-process workflow for all actions
+- ✅ Fixed window type detection issues
+- ✅ C++20 compatibility and Electron targeting
+- ✅ Comprehensive permission checking
+- ✅ Graceful fallback to AppleScript mode
+
+### v0.1.0
+- ✅ Initial release with basic Mail.app integration
+- ✅ AppleScript-based automation
+- ✅ Privacy filtering
+- ✅ OpenAI API integration
 
 ---
 
-**Note**: This app requires macOS and is designed specifically for Mail.app integration. For cross-platform versions, see our [Electron Web](https://github.com/yourusername/llm-assistant-web) variant.
+**Built with ❤️ for macOS** | **Powered by OpenAI GPT** | **Native Integration via C++/Objective-C**

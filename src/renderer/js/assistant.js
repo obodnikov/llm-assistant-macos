@@ -10,10 +10,69 @@ class AssistantPanel {
     this.loadSettings();
     this.updateTheme();
     this.checkMailContext();
+
+    this.nativeModulesAvailable = false;
+    this.checkNativeModules();
     
     // Remove loading overlay and show content
     this.hideLoadingOverlay();
   }
+
+  async checkNativeModules() {
+    try {
+      if (window.nativeModulesAPI) {
+        const status = await window.nativeModulesAPI.getStatus();
+        this.nativeModulesAvailable = status.available;
+        
+        if (this.nativeModulesAvailable) {
+          this.setupNativeModuleListeners();
+          console.log('✅ Native modules available');
+        } else {
+          console.log('ℹ️ Native modules not available - using fallbacks');
+        }
+      }
+    } catch (error) {
+      console.log('ℹ️ Native modules check failed:', error);
+    }
+  }
+
+  setupNativeModuleListeners() {
+    // Listen for text selection events
+    window.nativeModulesAPI?.onTextSelected((data) => {
+      console.log('Text selected:', data);
+      // Handle selected text
+    });
+
+    // Listen for context menu actions
+    window.nativeModulesAPI?.onContextMenuAction((data) => {
+      console.log('Context menu action:', data);
+      this.handleQuickAction(data.action, data.text);
+    });
+
+    // Listen for quick actions (from keyboard shortcuts)
+    window.nativeModulesAPI?.onQuickAction((data) => {
+      console.log('Quick action:', data);
+      this.handleQuickAction(data.action, data.text);
+    });
+  }
+
+  async handleQuickAction(action, text) {
+    // Pre-fill the action
+    if (this.userInput) {
+      const prompts = {
+        summarize: 'Summarize this text:',
+        translate: 'Translate this text:',
+        improve: 'Improve this text:',
+        reply: 'Draft a reply to this:'
+      };
+      
+      this.userInput.value = prompts[action] || action;
+    }
+    
+    // Process with the text
+    await this.processWithText(text);
+  }
+
 
   hideLoadingOverlay() {
     const loadingOverlay = document.querySelector('.loading-overlay');
@@ -189,6 +248,7 @@ class AssistantPanel {
     try {
       if (window.electronAPI) {
         const context = await window.electronAPI.getMailContext();
+        console.log('📧 Mail context received:', JSON.stringify(context, null, 2));
         this.updateMailContext(context);
       }
     } catch (error) {
@@ -198,7 +258,9 @@ class AssistantPanel {
   }
 
   updateMailContext(context) {
+    console.log('📧 Updating mail context:', context);
     if (!context || !context.type) {
+      console.log('⚠️ No valid context type, hiding mail context');
       this.hideMailContext();
       return;
     }
@@ -211,6 +273,11 @@ class AssistantPanel {
     if (context.type === 'compose') {
       if (this.contextDetails) {
         this.contextDetails.textContent = 'Composing email';
+      }
+    } else if (context.type === 'viewer') {
+      if (this.contextDetails) {
+        const subject = context.subject ? `: ${context.subject.substring(0, 40)}...` : '';
+        this.contextDetails.textContent = `Viewing email${subject}`;
       }
     } else if (context.type === 'mailbox') {
       const count = context.messages?.length || 0;
@@ -234,11 +301,12 @@ class AssistantPanel {
     this.actionButtons.forEach(btn => {
       const action = btn.dataset.action;
       let enabled = true;
-      
-      if (action === 'reply' && context.type !== 'mailbox') {
+
+      // Enable reply button for both mailbox and viewer contexts
+      if (action === 'reply' && context.type !== 'mailbox' && context.type !== 'viewer') {
         enabled = false;
       }
-      
+
       btn.disabled = !enabled;
       btn.style.opacity = enabled ? '1' : '0.5';
     });
@@ -246,25 +314,35 @@ class AssistantPanel {
 
   async handleQuickAction(action) {
     if (this.isProcessing) return;
-    
+
     let prompt = '';
     let textToProcess = '';
-    
+
     try {
       // Get current text (clipboard or mail context)
-      if (this.currentContext && this.currentContext.type === 'compose') {
+      console.log('🎯 handleQuickAction - currentContext:', this.currentContext);
+
+      if (this.currentContext && (this.currentContext.type === 'compose' || this.currentContext.type === 'viewer')) {
+        console.log('✅ Using mail context content');
         textToProcess = this.currentContext.content || '';
       } else {
+        console.log('⚠️ No mail context, using selected text or clipboard');
         if (window.systemAPI) {
-          textToProcess = await window.systemAPI.getSelectedText() || 
+          textToProcess = await window.systemAPI.getSelectedText() ||
                         await window.systemAPI.readClipboard() || '';
         }
       }
-      
+
+      console.log('📝 Text to process length:', textToProcess.length);
+
       // Generate appropriate prompt based on action
       switch (action) {
         case 'summarize':
-          prompt = 'Please summarize this text concisely, highlighting the key points:';
+          if (this.currentContext && this.currentContext.type === 'viewer') {
+            prompt = `Please summarize this email from ${this.currentContext.sender || 'sender'}:`;
+          } else {
+            prompt = 'Please summarize this text concisely, highlighting the key points:';
+          }
           break;
         case 'translate':
           prompt = 'Please translate this text to English (or if it\'s already in English, ask me which language to translate to):';
@@ -273,9 +351,9 @@ class AssistantPanel {
           prompt = 'Please improve this text for clarity, tone, and professionalism:';
           break;
         case 'reply':
-          if (this.currentContext && this.currentContext.type === 'mailbox') {
-            prompt = 'Based on this email conversation, help me draft a professional reply:';
-            textToProcess = this.formatEmailThread(this.currentContext.messages);
+          if (this.currentContext && (this.currentContext.type === 'mailbox' || this.currentContext.type === 'viewer')) {
+            prompt = 'Based on this email, help me draft a professional reply:';
+            textToProcess = this.currentContext.content || this.formatEmailThread(this.currentContext.messages);
           } else {
             prompt = 'Help me draft a professional email reply to this:';
           }
@@ -287,12 +365,14 @@ class AssistantPanel {
         return;
       }
       
-      // Set the input and process
+      // Store the text and set the prompt for user to edit
+      this.storedText = textToProcess; // Store email content for later processing
+
       if (this.userInput) {
         this.userInput.value = prompt;
+        this.userInput.focus(); // Focus the input for editing
       }
-      // await this.processWithText(textToProcess);
-      
+
     } catch (error) {
       console.error('Quick action failed:', error);
       this.showError('Failed to perform quick action. Please try again.');
@@ -371,22 +451,29 @@ Content: ${msg.content}
       return;
     }
     
-    // Get text to process
+    // Get text to process - use stored text if available (from quick actions)
     let textToProcess = '';
     try {
-      if (this.currentContext && this.currentContext.type === 'compose') {
+      if (this.storedText) {
+        // Use the stored text from quick action button (Summarize, Translate, etc.)
+        textToProcess = this.storedText;
+        console.log('📦 Using stored text from quick action');
+      } else if (this.currentContext && this.currentContext.type === 'compose') {
         textToProcess = this.currentContext.content || '';
-      } else if (this.currentContext && this.currentContext.type === 'mailbox') {
-        textToProcess = this.formatEmailThread(this.currentContext.messages);
+      } else if (this.currentContext && (this.currentContext.type === 'viewer' || this.currentContext.type === 'mailbox')) {
+        textToProcess = this.currentContext.content || this.formatEmailThread(this.currentContext.messages);
       } else if (window.systemAPI) {
-        textToProcess = await window.systemAPI.getSelectedText() || 
+        textToProcess = await window.systemAPI.getSelectedText() ||
                       await window.systemAPI.readClipboard() || '';
       }
     } catch (error) {
       console.log('Could not get text context:', error);
     }
-    
+
     await this.processWithText(textToProcess, prompt);
+
+    // Clear stored text after processing
+    this.storedText = null;
   }
 
   async processWithText(textToProcess, customPrompt = null) {

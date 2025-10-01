@@ -18,6 +18,16 @@ let nativeModulesReady = false;
 // Development mode check
 const isDev = process.argv.includes('--dev');
 
+// Set dock icon (if you want to show it)
+if (process.platform === 'darwin') {
+  const iconPath = path.join(__dirname, '../../assets/icons/icon.png');
+  const icon = nativeImage.createFromPath(iconPath);
+  app.dock.setIcon(icon);
+  
+  // Or hide it for background app (as in your current setup)
+  app.dock.hide();
+}
+
 // 3. ADD GLOBAL CALLBACK
 global.nativeModuleCallback = (event, data) => {
   handleNativeModuleEvent(event, data);

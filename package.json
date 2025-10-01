@@ -57,8 +57,9 @@
     "electron-window-state": "^5.0.3"
   },
   "build": {
-    "appId": "com.yourname.llm-assistant",
+    "appId": "com.obodnikov.llm-assistant",
     "productName": "LLM Assistant",
+    "icon": "assets/icons/icon.icns",
     "directories": {
       "output": "dist"
     },
@@ -87,6 +88,7 @@
         }
       ],
       "darkModeSupport": true,
+      "icon": "assets/icons/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -96,7 +98,8 @@
       }
     },
     "dmg": {
-      "title": "LLM Assistant Installer"
+      "title": "LLM Assistant Installer",
+      "icon": "assets/icons/icon.icns"
     }
   },
   "gypfile": true

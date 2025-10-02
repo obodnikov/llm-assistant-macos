@@ -393,16 +393,18 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
   
   try {
     const model = store.get('ai-model', 'gpt-4');
-    
-    // Build system prompt based on context
-    let systemPrompt = 'You are a helpful AI assistant for email and text processing.';
-    
+
+    // Build system prompt based on context using configurable prompts
+    let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for email and text processing.');
+
     if (context && context.type === 'compose') {
-      systemPrompt += ' The user is composing an email. Provide concise, professional assistance.';
+      const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
+      systemPrompt += ' ' + composeAddition;
     } else if (context && context.type === 'mailbox') {
-      systemPrompt += ' The user is working with email threads. Help them understand and respond to conversations.';
+      const mailboxAddition = store.get('prompt-mailbox', 'The user is working with email threads. Help them understand and respond to conversations.');
+      systemPrompt += ' ' + mailboxAddition;
     }
-    
+
     systemPrompt += ' Keep responses concise and actionable.';
     
     // Prepare messages

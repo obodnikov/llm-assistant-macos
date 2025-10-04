@@ -212,7 +212,7 @@ class AssistantPanel {
       this.settings.filterFinancial = await window.electronAPI.getConfig('filter-financial') ?? true;
       
       // Load model preference
-      this.settings.model = await window.electronAPI.getConfig('ai-model') ?? 'gpt-4';
+      this.settings.model = await window.electronAPI.getConfig('ai-model') ?? 'gpt-4.1-mini';
       
       this.updateSettingsUI();
     } catch (error) {
@@ -658,7 +658,7 @@ Content: ${msg.content}
         filterApiKeys: filterApiKeysEl?.checked ?? true,
         filterCredentials: filterCredentialsEl?.checked ?? true,
         filterFinancial: filterFinancialEl?.checked ?? true,
-        model: modelSelectEl?.value ?? 'gpt-4'
+        model: modelSelectEl?.value ?? 'gpt-4.1-mini'
       };
       
       // Show success feedback

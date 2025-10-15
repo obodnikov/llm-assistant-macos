@@ -2,7 +2,7 @@
 
 AI-powered assistant with **native macOS integration** and **Mail.app support**. Get intelligent help with email composition, text processing, and more using OpenAI's GPT models.
 
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![macOS](https://img.shields.io/badge/macOS-11.0+-blue)
 ![Node](https://img.shields.io/badge/node-24.9.0-brightgreen)
@@ -124,6 +124,18 @@ Configure in Settings (⚙️):
 - ✅ Financial data (credit cards, SSN)
 - ⚠️ Email addresses (optional)
 - ⚠️ Phone numbers (optional)
+
+### Custom Prompts
+Customize AI behavior for different actions in Settings (⚙️):
+- **System Prompt (Base)** - Core AI personality and behavior
+- **Compose Context Addition** - Additional instructions when composing emails
+- **Mailbox Context Addition** - Additional instructions when viewing email threads
+- **Summarize Prompt** - Template for summarization requests
+- **Translate Prompt** - Template for translation requests
+- **Improve Prompt** - Template for text improvement requests
+- **Reply Prompt** - Template for email reply generation
+
+All prompts support customization to match your specific needs and tone preferences.
 
 ### Keyboard Shortcuts
 | Shortcut | Action |
@@ -338,7 +350,13 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔄 Version History
 
-### v0.2.0 (Current)
+### v0.3.0 (Current)
+- ✅ Configurable AI prompts for all actions
+- ✅ Customizable system prompt and context-specific additions
+- ✅ Editable quick action prompts (Summarize, Translate, Improve, Reply)
+- ✅ Settings UI for prompt customization
+
+### v0.2.0
 - ✅ Native C++/Objective-C modules integration
 - ✅ Enhanced Mail.app support with robust content extraction
 - ✅ Edit-before-process workflow for all actions

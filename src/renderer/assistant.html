@@ -205,6 +205,46 @@
                             <option value="gpt-5-mini">GPT-5-mini</option>
                         </select>
                     </div>
+
+                    <div class="setting-group">
+                        <label>Custom Prompts:</label>
+                        <small class="help-text">Customize AI prompts for different actions</small>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-system" style="font-size: 0.9rem;">System Prompt (Base):</label>
+                            <input type="text" id="prompt-system" placeholder="You are a helpful AI assistant for email and text processing.">
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-compose" style="font-size: 0.9rem;">Compose Context Addition:</label>
+                            <input type="text" id="prompt-compose" placeholder="The user is composing an email. Provide concise, professional assistance.">
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-mailbox" style="font-size: 0.9rem;">Mailbox Context Addition:</label>
+                            <input type="text" id="prompt-mailbox" placeholder="The user is working with email threads. Help them understand and respond to conversations.">
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-summarize" style="font-size: 0.9rem;">Summarize Prompt:</label>
+                            <input type="text" id="prompt-summarize" placeholder="Please summarize this text concisely, highlighting the key points:">
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-translate" style="font-size: 0.9rem;">Translate Prompt:</label>
+                            <input type="text" id="prompt-translate" placeholder="Please translate this text to English...">
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-improve" style="font-size: 0.9rem;">Improve Prompt:</label>
+                            <input type="text" id="prompt-improve" placeholder="Please improve this text for clarity, tone, and professionalism:">
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label for="prompt-reply" style="font-size: 0.9rem;">Reply Prompt:</label>
+                            <input type="text" id="prompt-reply" placeholder="Help me draft a professional email reply to this:">
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="settings-footer">

@@ -116,7 +116,16 @@ class AssistantPanel {
     this.settingsClose = document.getElementById('settings-close');
     this.openaiKeyInput = document.getElementById('openai-key');
     this.saveSettingsBtn = document.getElementById('save-settings');
-    
+
+    // Prompt configuration elements
+    this.promptSystemInput = document.getElementById('prompt-system');
+    this.promptComposeInput = document.getElementById('prompt-compose');
+    this.promptMailboxInput = document.getElementById('prompt-mailbox');
+    this.promptSummarizeInput = document.getElementById('prompt-summarize');
+    this.promptTranslateInput = document.getElementById('prompt-translate');
+    this.promptImproveInput = document.getElementById('prompt-improve');
+    this.promptReplyInput = document.getElementById('prompt-reply');
+
     // Quick action buttons
     this.actionButtons = document.querySelectorAll('.action-btn');
   }
@@ -212,8 +221,17 @@ class AssistantPanel {
       this.settings.filterFinancial = await window.electronAPI.getConfig('filter-financial') ?? true;
       
       // Load model preference
-      this.settings.model = await window.electronAPI.getConfig('ai-model') ?? 'gpt-4.1-mini';
-      
+      this.settings.model = await window.electronAPI.getConfig('ai-model') ?? 'gpt-4';
+
+      // Load custom prompts
+      this.settings.promptSystem = await window.electronAPI.getConfig('prompt-system') ?? 'You are a helpful AI assistant for email and text processing.';
+      this.settings.promptCompose = await window.electronAPI.getConfig('prompt-compose') ?? 'The user is composing an email. Provide concise, professional assistance.';
+      this.settings.promptMailbox = await window.electronAPI.getConfig('prompt-mailbox') ?? 'The user is working with email threads. Help them understand and respond to conversations.';
+      this.settings.promptSummarize = await window.electronAPI.getConfig('prompt-summarize') ?? 'Please summarize this text concisely, highlighting the key points:';
+      this.settings.promptTranslate = await window.electronAPI.getConfig('prompt-translate') ?? 'Please translate this text to English (or if it\'s already in English, ask me which language to translate to):';
+      this.settings.promptImprove = await window.electronAPI.getConfig('prompt-improve') ?? 'Please improve this text for clarity, tone, and professionalism:';
+      this.settings.promptReply = await window.electronAPI.getConfig('prompt-reply') ?? 'Help me draft a professional email reply to this:';
+
       this.updateSettingsUI();
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -226,11 +244,20 @@ class AssistantPanel {
     const filterCredentialsCheckbox = document.getElementById('filter-credentials');
     const filterFinancialCheckbox = document.getElementById('filter-financial');
     const modelSelect = document.getElementById('model-select');
-    
+
     if (filterApiKeysCheckbox) filterApiKeysCheckbox.checked = this.settings.filterApiKeys;
     if (filterCredentialsCheckbox) filterCredentialsCheckbox.checked = this.settings.filterCredentials;
     if (filterFinancialCheckbox) filterFinancialCheckbox.checked = this.settings.filterFinancial;
     if (modelSelect) modelSelect.value = this.settings.model;
+
+    // Update prompt inputs
+    if (this.promptSystemInput) this.promptSystemInput.value = this.settings.promptSystem || '';
+    if (this.promptComposeInput) this.promptComposeInput.value = this.settings.promptCompose || '';
+    if (this.promptMailboxInput) this.promptMailboxInput.value = this.settings.promptMailbox || '';
+    if (this.promptSummarizeInput) this.promptSummarizeInput.value = this.settings.promptSummarize || '';
+    if (this.promptTranslateInput) this.promptTranslateInput.value = this.settings.promptTranslate || '';
+    if (this.promptImproveInput) this.promptImproveInput.value = this.settings.promptImprove || '';
+    if (this.promptReplyInput) this.promptReplyInput.value = this.settings.promptReply || '';
   }
 
   async updateTheme() {
@@ -335,27 +362,27 @@ class AssistantPanel {
 
       console.log('📝 Text to process length:', textToProcess.length);
 
-      // Generate appropriate prompt based on action
+      // Generate appropriate prompt based on action using configurable prompts
       switch (action) {
         case 'summarize':
           if (this.currentContext && this.currentContext.type === 'viewer') {
             prompt = `Please summarize this email from ${this.currentContext.sender || 'sender'}:`;
           } else {
-            prompt = 'Please summarize this text concisely, highlighting the key points:';
+            prompt = this.settings.promptSummarize || 'Please summarize this text concisely, highlighting the key points:';
           }
           break;
         case 'translate':
-          prompt = 'Please translate this text to English (or if it\'s already in English, ask me which language to translate to):';
+          prompt = this.settings.promptTranslate || 'Please translate this text to English (or if it\'s already in English, ask me which language to translate to):';
           break;
         case 'improve':
-          prompt = 'Please improve this text for clarity, tone, and professionalism:';
+          prompt = this.settings.promptImprove || 'Please improve this text for clarity, tone, and professionalism:';
           break;
         case 'reply':
           if (this.currentContext && (this.currentContext.type === 'mailbox' || this.currentContext.type === 'viewer')) {
             prompt = 'Based on this email, help me draft a professional reply:';
             textToProcess = this.currentContext.content || this.formatEmailThread(this.currentContext.messages);
           } else {
-            prompt = 'Help me draft a professional email reply to this:';
+            prompt = this.settings.promptReply || 'Help me draft a professional email reply to this:';
           }
           break;
       }
@@ -652,13 +679,43 @@ Content: ${msg.content}
       if (modelSelectEl) {
         await window.electronAPI.setConfig('ai-model', modelSelectEl.value);
       }
-      
+
+      // Save custom prompts
+      if (this.promptSystemInput) {
+        await window.electronAPI.setConfig('prompt-system', this.promptSystemInput.value.trim());
+      }
+      if (this.promptComposeInput) {
+        await window.electronAPI.setConfig('prompt-compose', this.promptComposeInput.value.trim());
+      }
+      if (this.promptMailboxInput) {
+        await window.electronAPI.setConfig('prompt-mailbox', this.promptMailboxInput.value.trim());
+      }
+      if (this.promptSummarizeInput) {
+        await window.electronAPI.setConfig('prompt-summarize', this.promptSummarizeInput.value.trim());
+      }
+      if (this.promptTranslateInput) {
+        await window.electronAPI.setConfig('prompt-translate', this.promptTranslateInput.value.trim());
+      }
+      if (this.promptImproveInput) {
+        await window.electronAPI.setConfig('prompt-improve', this.promptImproveInput.value.trim());
+      }
+      if (this.promptReplyInput) {
+        await window.electronAPI.setConfig('prompt-reply', this.promptReplyInput.value.trim());
+      }
+
       // Update local settings
       this.settings = {
         filterApiKeys: filterApiKeysEl?.checked ?? true,
         filterCredentials: filterCredentialsEl?.checked ?? true,
         filterFinancial: filterFinancialEl?.checked ?? true,
-        model: modelSelectEl?.value ?? 'gpt-4.1-mini'
+        model: modelSelectEl?.value ?? 'gpt-4',
+        promptSystem: this.promptSystemInput?.value.trim() || 'You are a helpful AI assistant for email and text processing.',
+        promptCompose: this.promptComposeInput?.value.trim() || 'The user is composing an email. Provide concise, professional assistance.',
+        promptMailbox: this.promptMailboxInput?.value.trim() || 'The user is working with email threads. Help them understand and respond to conversations.',
+        promptSummarize: this.promptSummarizeInput?.value.trim() || 'Please summarize this text concisely, highlighting the key points:',
+        promptTranslate: this.promptTranslateInput?.value.trim() || 'Please translate this text to English (or if it\'s already in English, ask me which language to translate to):',
+        promptImprove: this.promptImproveInput?.value.trim() || 'Please improve this text for clarity, tone, and professionalism:',
+        promptReply: this.promptReplyInput?.value.trim() || 'Help me draft a professional email reply to this:'
       };
       
       // Show success feedback

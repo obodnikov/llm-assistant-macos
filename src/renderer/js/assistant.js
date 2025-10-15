@@ -7,6 +7,7 @@ class AssistantPanel {
     // Simple initialization - no complex waiting
     this.initializeElements();
     this.bindEvents();
+    this.loadAvailableModels(); 
     this.loadSettings();
     this.updateTheme();
     this.checkMailContext();
@@ -258,6 +259,74 @@ class AssistantPanel {
     if (this.promptTranslateInput) this.promptTranslateInput.value = this.settings.promptTranslate || '';
     if (this.promptImproveInput) this.promptImproveInput.value = this.settings.promptImprove || '';
     if (this.promptReplyInput) this.promptReplyInput.value = this.settings.promptReply || '';
+  }
+
+  async loadAvailableModels() {
+    try {
+      if (!window.electronAPI?.getAvailableModels) {
+        console.warn('getAvailableModels API not available');
+        return;
+      }
+
+      const models = await window.electronAPI.getAvailableModels();
+      this.populateModelSelect(models);
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    }
+  }
+
+  populateModelSelect(models) {
+    const modelSelect = document.getElementById('model-select');
+    if (!modelSelect) return;
+
+    // Clear existing options
+    modelSelect.innerHTML = '';
+
+    // Group models by provider
+    const groupedModels = {};
+    models.forEach(model => {
+      if (!groupedModels[model.providerName]) {
+        groupedModels[model.providerName] = [];
+      }
+      groupedModels[model.providerName].push(model);
+    });
+
+    // Add options grouped by provider
+    Object.entries(groupedModels).forEach(([providerName, providerModels]) => {
+      if (Object.keys(groupedModels).length > 1) {
+        // Add optgroup only if multiple providers
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = providerName;
+        
+        providerModels.forEach(model => {
+          const option = this.createModelOption(model);
+          optgroup.appendChild(option);
+        });
+        
+        modelSelect.appendChild(optgroup);
+      } else {
+        // Single provider, no optgroup needed
+        providerModels.forEach(model => {
+          const option = this.createModelOption(model);
+          modelSelect.appendChild(option);
+        });
+      }
+    });
+  }
+
+  createModelOption(model) {
+    const option = document.createElement('option');
+    option.value = model.fullId;
+    
+    // Format: "GPT-5 - Full flagship model, highest quality"
+    option.textContent = `${model.name}${model.description ? ' - ' + model.description : ''}`;
+    
+    // Add data attributes for additional info
+    option.dataset.speed = model.speed;
+    option.dataset.quality = model.quality;
+    option.dataset.cost = model.cost;
+    
+    return option;
   }
 
   async updateTheme() {

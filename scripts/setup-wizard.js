@@ -79,20 +79,26 @@ async function setupPrivacy() {
 async function setupModel() {
   console.log('Step 3: AI Model Selection\n');
   
-  console.log('Available models:');
-  console.log('1. GPT-4 (recommended) - Most capable, higher cost');
-  console.log('2. GPT-4 Turbo - Faster, good balance');
-  console.log('3. GPT-3.5 Turbo - Fastest, lower cost\n');
+  console.log('Available OpenAI models:');
+  console.log('1. GPT-5 (recommended) - Full flagship model');
+  console.log('2. GPT-5 Mini - Lightweight, optimized for speed');
+  console.log('3. GPT-5 Nano - Most cost-effective');
+  console.log('4. GPT-4.1 - Superior reasoning and context');
+  console.log('5. GPT-4.1 Mini - Balanced performance');
+  console.log('6. GPT-4.1 Nano - Simple or bulk tasks\n');
   
-  const modelChoice = await askQuestion('Choose model (1-3) [1]: ') || '1';
+  const modelChoice = await askQuestion('Choose model (1-6) [1]: ') || '1';
   
   const models = {
-    '1': 'gpt-4',
-    '2': 'gpt-4-turbo',
-    '3': 'gpt-3.5-turbo'
+    '1': 'openai:gpt-5',
+    '2': 'openai:gpt-5-mini',
+    '3': 'openai:gpt-5-nano',
+    '4': 'openai:gpt-4.1',
+    '5': 'openai:gpt-4.1-mini',
+    '6': 'openai:gpt-4.1-nano'
   };
   
-  config.model = models[modelChoice] || 'gpt-4';
+  config.model = models[modelChoice] || 'openai:gpt-5';
   console.log(`✅ Selected model: ${config.model}\n`);
 }
 

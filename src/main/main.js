@@ -1,3 +1,4 @@
+const modelManager = require('./modelManager');
 const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
@@ -304,6 +305,48 @@ function initializeOpenAI() {
     openaiClient = new OpenAI({ apiKey });
   }
 }
+
+
+// Model management IPC handlers
+ipcMain.handle('get-available-models', async () => {
+  return modelManager.getAvailableModels();
+});
+
+ipcMain.handle('get-provider-models', async (event, providerId) => {
+  return modelManager.getProviderModels(providerId);
+});
+
+ipcMain.handle('get-enabled-providers', async () => {
+  return modelManager.getEnabledProviders();
+});
+
+ipcMain.handle('set-provider-enabled', async (event, providerId, enabled) => {
+  modelManager.setProviderEnabled(providerId, enabled);
+  return true;
+});
+
+ipcMain.handle('add-custom-model', async (event, providerId, model) => {
+  try {
+    modelManager.addModel(providerId, model);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('remove-model', async (event, providerId, modelId) => {
+  try {
+    modelManager.removeModel(providerId, modelId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('reload-model-config', async () => {
+  modelManager.loadConfig();
+  return modelManager.getAvailableModels();
+});
 
 // IPC handlers for renderer processes
 ipcMain.handle('get-config', (event, key) => {

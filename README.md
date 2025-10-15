@@ -110,12 +110,20 @@ Instead of quick actions, type custom requests:
 ## ⚙️ Configuration
 
 ### Model Selection
+
+**New in v0.3.0**: Flexible model configuration system with support for multiple AI providers.
+
+#### Available Models (OpenAI)
 | Model | Speed | Quality | Cost | Best For |
 |-------|-------|---------|------|----------|
-| GPT-4.1-mini | Fast | Excellent | Low | General use (recommended) |
-| GPT-4.1 | Medium | Excellent | Medium | Complex analysis |
-| GPT-5-mini | Fast | Superior | Medium | Advanced quick tasks |
-| GPT-5 | Medium | Superior | High | Most complex analysis |
+| **GPT-5** | Medium | Excellent | High | Full flagship model (recommended) |
+| **GPT-5 Mini** | Fast | Excellent | Medium | Lightweight, optimized for speed |
+| **GPT-5 Nano** | Very Fast | Good | Low | Most cost-effective |
+| **GPT-4.1** | Medium | Excellent | High | Superior reasoning and context |
+| **GPT-4.1 Mini** | Fast | Very Good | Medium | Balanced performance |
+| **GPT-4.1 Nano** | Very Fast | Good | Low | Simple or bulk tasks |
+
+Configure models in Settings or via `config/models.json`. See [MODEL_MANAGEMENT.md](docs/MODEL_MANAGEMENT.md) for adding custom models.
 
 ### Privacy Settings
 Configure in Settings (⚙️):
@@ -219,9 +227,13 @@ llm-assistant-macos/
 │   ├── context_menu.node
 │   └── text_selection.node
 │
+├── config/
+│   └── models.json               # Default model configuration
+│
 ├── src/
 │   ├── main/
-│   │   └── main.js               # Main process with native integration
+│   │   ├── main.js               # Main process with native integration
+│   │   └── modelManager.js       # Model configuration manager
 │   ├── renderer/
 │   │   ├── assistant.html        # UI
 │   │   ├── css/
@@ -231,7 +243,13 @@ llm-assistant-macos/
 │       └── preload.js            # IPC bridge with native APIs
 │
 ├── scripts/
-│   └── check-permissions.js      # Permission verification
+│   ├── check-permissions.js      # Permission verification
+│   └── setup-wizard.js           # Interactive setup with model selection
+│
+├── docs/
+│   ├── MODEL_MANAGEMENT.md       # Model configuration guide
+│   ├── Model_Management_Implementat_on_Guide.md
+│   └── Model_Management_Quick_Reference.md
 │
 └── Docs/
     ├── SETUP.md                  # Detailed setup guide
@@ -311,6 +329,8 @@ We welcome contributions! Please see our contributing guidelines:
 - **[SETUP.md](Docs/SETUP.md)** - Detailed setup and configuration
 - **[integration_guide.md](Docs/integration_guide.md)** - Technical integration details
 - **[PRIVACY.md](Docs/PRIVACY.md)** - Privacy policy and data handling
+- **[MODEL_MANAGEMENT.md](docs/MODEL_MANAGEMENT.md)** - Model configuration guide
+- **[Model_Management_Quick_Reference.md](docs/Model_Management_Quick_Reference.md)** - Quick reference for model management
 
 ## 🐛 Known Issues
 
@@ -351,10 +371,30 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🔄 Version History
 
 ### v0.3.0 (Current)
-- ✅ Configurable AI prompts for all actions
-- ✅ Customizable system prompt and context-specific additions
-- ✅ Editable quick action prompts (Summarize, Translate, Improve, Reply)
-- ✅ Settings UI for prompt customization
+- ✅ **Flexible Model Configuration System**
+  - Support for multiple AI providers (OpenAI, Anthropic, Perplexity, Ollama)
+  - Dynamic model loading from `config/models.json`
+  - User override configuration in `~/Library/Application Support/llm-assistant-macos/models-override.json`
+  - Add/remove models without code changes
+- ✅ **New GPT-5 and GPT-4.1 Model Series**
+  - GPT-5 (Full flagship), GPT-5 Mini, GPT-5 Nano
+  - GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano
+  - Automatic API parameter handling (`max_completion_tokens` vs `max_tokens`)
+- ✅ **Updated Setup Wizard**
+  - 6 model options instead of 3
+  - Automatic model configuration testing
+- ✅ **Model Management APIs**
+  - IPC handlers for model CRUD operations
+  - Runtime model config reloading
+  - Provider enable/disable support
+- ✅ **Configurable AI Prompts**
+  - Customizable system prompt and context-specific additions
+  - Editable quick action prompts (Summarize, Translate, Improve, Reply)
+  - Settings UI for prompt customization
+- ✅ **Enhanced Documentation**
+  - Comprehensive model management guide
+  - Implementation guide for developers
+  - Quick reference for common tasks
 
 ### v0.2.0
 - ✅ Native C++/Objective-C modules integration

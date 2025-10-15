@@ -4,6 +4,8 @@
 
 Your LLM Assistant now has a **configurable model system** that allows adding/removing models without changing code.
 
+**Important:** GPT-5 models use different API parameters (`max_completion_tokens` and `temperature: 1`) compared to GPT-4 and older models (`max_tokens` and `temperature: 0.7`). The application handles this automatically based on model name.
+
 ## Key Files
 
 | File | Purpose | Edit? |
@@ -138,9 +140,19 @@ cat ~/Library/Application\ Support/llm-assistant-macos/models-override.json | jq
 # Reset to defaults (removes user config)
 rm ~/Library/Application\ Support/llm-assistant-macos/models-override.json
 
-# Run setup wizard with new models
+# Run setup wizard with new models (includes GPT-5 and GPT-4.1 options)
 npm run setup-wizard
 ```
+
+## Setup Wizard Models
+
+The setup wizard now includes these options:
+1. GPT-5 (recommended) - Full flagship model
+2. GPT-5 Mini - Lightweight, optimized for speed
+3. GPT-5 Nano - Most cost-effective
+4. GPT-4.1 - Superior reasoning and context
+5. GPT-4.1 Mini - Balanced performance
+6. GPT-4.1 Nano - Simple or bulk tasks
 
 ## API Usage (DevTools Console)
 
@@ -167,13 +179,15 @@ await window.electronAPI.addCustomModel('openai', {
 
 ## Model ID Format
 
-Models use the format: `provider:model-id`
+Models use the format: `provider:model-id` (or just `model-id` for backward compatibility)
 
 Examples:
-- `openai:gpt-5`
-- `openai:gpt-5-mini`
+- `openai:gpt-5` or `gpt-5`
+- `openai:gpt-5-mini` or `gpt-5-mini`
 - `anthropic:claude-3-opus-20240229`
 - `ollama:llama2`
+
+The application automatically parses both formats and extracts the model name for API calls.
 
 ## Troubleshooting
 
@@ -206,6 +220,25 @@ Examples:
 - Forget to restart after changes
 
 ## Implementation Notes
+
+### API Parameter Handling
+The application automatically detects GPT-5 models and uses the correct parameters:
+
+**In `main.js` (AI processing):**
+```javascript
+const isGPT5 = model.startsWith('gpt-5');
+const apiParams = isGPT5
+  ? { max_completion_tokens: 1000, temperature: 1 }
+  : { max_tokens: 1000, temperature: 0.7 };
+```
+
+**In `setup-wizard.js` (testing):**
+```javascript
+const isGPT5 = config.model.startsWith('gpt-5');
+const tokenParams = isGPT5
+  ? { max_completion_tokens: 50 }
+  : { max_tokens: 50 };
+```
 
 ### Constructor Pattern
 The `AssistantPanel` class uses a constructor pattern (not an `init()` method):

@@ -17,6 +17,18 @@ The LLM Assistant supports multiple AI providers and models through a flexible c
 - **Safe to edit**: Persists across app updates
 - **Priority**: Overrides default configuration
 
+## Important: API Parameter Differences Between Model Families
+
+**GPT-5 Models** use different API parameters than older models:
+- Use `max_completion_tokens` instead of `max_tokens`
+- Use `temperature: 1` instead of `temperature: 0.7`
+
+**GPT-4 and Older Models**:
+- Use `max_tokens`
+- Support temperature range (e.g., `temperature: 0.7`)
+
+The application automatically handles these differences based on the model name prefix.
+
 ## Adding New Models
 
 ### Method 1: Edit User Configuration File
@@ -54,7 +66,13 @@ open ~/Library/Application\ Support/llm-assistant-macos/models-override.json
 npm run setup-wizard
 ```
 
-Follow the prompts to add new models interactively.
+The wizard now includes all new GPT-5 and GPT-4.1 models:
+- GPT-5 (Full flagship model)
+- GPT-5 Mini (Lightweight, optimized for speed)
+- GPT-5 Nano (Most cost-effective)
+- GPT-4.1 (Superior reasoning and context)
+- GPT-4.1 Mini (Balanced performance)
+- GPT-4.1 Nano (Simple or bulk tasks)
 
 ## Removing Models
 
@@ -265,6 +283,9 @@ The app will automatically discover available models on startup.
 
 ### Add Legacy GPT-4 Models
 If you want to use older OpenAI models alongside the new ones:
+
+**Note:** GPT-4 and earlier models use `max_tokens`, while GPT-5 models use `max_completion_tokens`. The application handles this automatically.
+
 ```json
 {
   "providers": {

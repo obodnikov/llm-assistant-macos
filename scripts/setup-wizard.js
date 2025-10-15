@@ -118,10 +118,16 @@ async function testConfiguration() {
     const OpenAI = require('openai');
     const client = new OpenAI({ apiKey: config.openaiApiKey });
     
+    // GPT-5 models use max_completion_tokens, GPT-4 and older use max_tokens
+    const isGPT5 = config.model.startsWith('gpt-5');
+    const tokenParams = isGPT5
+      ? { max_completion_tokens: 50 }
+      : { max_tokens: 50 };
+
     const response = await client.chat.completions.create({
       model: config.model,
       messages: [{ role: 'user', content: 'Say "Hello from LLM Assistant!"' }],
-      max_tokens: 50
+      ...tokenParams
     });
     
     console.log('✅ OpenAI connection successful!');

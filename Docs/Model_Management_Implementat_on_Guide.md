@@ -167,6 +167,57 @@ Add these imports at the top:
 const modelManager = require('./modelManager');
 ```
 
+Update the AI processing handler to parse model IDs correctly and handle different API parameters:
+
+```javascript
+ipcMain.handle('process-ai', async (event, text, prompt, context) => {
+  // ... existing validation code ...
+
+  try {
+    const modelFullId = store.get('ai-model', 'gpt-4');
+
+    // Parse model ID to extract the actual model name for the API
+    // Format: "provider:model-id" -> extract just "model-id"
+    const model = modelFullId.includes(':')
+      ? modelFullId.split(':').slice(1).join(':')
+      : modelFullId;
+
+    // Build system prompt based on context using configurable prompts
+    let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for email and text processing.');
+
+    if (context && context.type === 'compose') {
+      const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
+      systemPrompt += ' ' + composeAddition;
+    } else if (context && context.type === 'mailbox') {
+      const mailboxAddition = store.get('prompt-mailbox', 'The user is working with email threads. Help them understand and respond to conversations.');
+      systemPrompt += ' ' + mailboxAddition;
+    }
+
+    systemPrompt += ' Keep responses concise and actionable.';
+
+    // Prepare messages array
+    // ... existing message preparation code ...
+
+    // GPT-5 models use max_completion_tokens and temperature: 1
+    // GPT-4 and older use max_tokens and support temperature range
+    const isGPT5 = model.startsWith('gpt-5');
+    const apiParams = isGPT5
+      ? { max_completion_tokens: 1000, temperature: 1 }
+      : { max_tokens: 1000, temperature: 0.7 };
+
+    const response = await openaiClient.chat.completions.create({
+      model: model,
+      messages: messages,
+      ...apiParams
+    });
+
+    return response.choices[0].message.content;
+  } catch (error) {
+    // ... existing error handling ...
+  }
+});
+```
+
 Add these IPC handlers (find the section with other `ipcMain.handle()` calls):
 
 ```javascript
@@ -355,12 +406,12 @@ Replace the hardcoded model dropdown with:
 
 ### 7. Update `scripts/setup-wizard.js`
 
-Replace the `setupModel()` function:
+Update the `setupModel()` function to include new models:
 
 ```javascript
 async function setupModel() {
   console.log('Step 3: AI Model Selection\n');
-  
+
   console.log('Available OpenAI models:');
   console.log('1. GPT-5 (recommended) - Full flagship model');
   console.log('2. GPT-5 Mini - Lightweight, optimized for speed');
@@ -368,20 +419,52 @@ async function setupModel() {
   console.log('4. GPT-4.1 - Superior reasoning and context');
   console.log('5. GPT-4.1 Mini - Balanced performance');
   console.log('6. GPT-4.1 Nano - Simple or bulk tasks\n');
-  
+
   const modelChoice = await askQuestion('Choose model (1-6) [1]: ') || '1';
-  
+
   const models = {
-    '1': 'openai:gpt-5',
-    '2': 'openai:gpt-5-mini',
-    '3': 'openai:gpt-5-nano',
-    '4': 'openai:gpt-4.1',
-    '5': 'openai:gpt-4.1-mini',
-    '6': 'openai:gpt-4.1-nano'
+    '1': 'gpt-5',
+    '2': 'gpt-5-mini',
+    '3': 'gpt-5-nano',
+    '4': 'gpt-4.1',
+    '5': 'gpt-4.1-mini',
+    '6': 'gpt-4.1-nano'
   };
-  
-  config.model = models[modelChoice] || 'openai:gpt-5';
+
+  config.model = models[modelChoice] || 'gpt-5';
   console.log(`✅ Selected model: ${config.model}\n`);
+}
+```
+
+Also update the `testConfiguration()` function to handle GPT-5's different API parameters:
+
+```javascript
+async function testConfiguration() {
+  console.log('\nStep 5: Testing Configuration\n');
+  console.log('Testing OpenAI connection...');
+
+  try {
+    const OpenAI = require('openai');
+    const client = new OpenAI({ apiKey: config.openaiApiKey });
+
+    // GPT-5 models use max_completion_tokens, GPT-4 and older use max_tokens
+    const isGPT5 = config.model.startsWith('gpt-5');
+    const tokenParams = isGPT5
+      ? { max_completion_tokens: 50 }
+      : { max_tokens: 50 };
+
+    const response = await client.chat.completions.create({
+      model: config.model,
+      messages: [{ role: 'user', content: 'Say "Hello from LLM Assistant!"' }],
+      ...tokenParams
+    });
+
+    console.log('✅ OpenAI connection successful!');
+    console.log(`Response: ${response.choices[0].message.content}\n`);
+  } catch (error) {
+    console.error('❌ OpenAI test failed:', error.message);
+    throw error;
+  }
 }
 ```
 

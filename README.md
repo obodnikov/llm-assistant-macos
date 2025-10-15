@@ -112,9 +112,10 @@ Instead of quick actions, type custom requests:
 ### Model Selection
 | Model | Speed | Quality | Cost | Best For |
 |-------|-------|---------|------|----------|
-| GPT-4o | Medium | Excellent | Medium | General use (recommended) |
-| GPT-4 Turbo | Medium | Excellent | Medium | Complex analysis |
-| GPT-3.5 Turbo | Fast | Good | Low | Quick summaries |
+| GPT-4.1-mini | Fast | Excellent | Low | General use (recommended) |
+| GPT-4.1 | Medium | Excellent | Medium | Complex analysis |
+| GPT-5-mini | Fast | Superior | Medium | Advanced quick tasks |
+| GPT-5 | Medium | Superior | High | Most complex analysis |
 
 ### Privacy Settings
 Configure in Settings (⚙️):

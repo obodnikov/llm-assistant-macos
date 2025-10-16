@@ -92,19 +92,19 @@ CGEventRef EventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
                 if (!selectionCallback.IsEmpty()) {
                     Local<Context> context = isolate->GetCurrentContext();
                     Local<Object> result = Object::New(isolate);
-                    
-                    result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
+
+                    (void)result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
                                String::NewFromUtf8(isolate, data->text.c_str()).ToLocalChecked());
-                    result->Set(context, String::NewFromUtf8(isolate, "appName").ToLocalChecked(),
+                    (void)result->Set(context, String::NewFromUtf8(isolate, "appName").ToLocalChecked(),
                                String::NewFromUtf8(isolate, data->appName.c_str()).ToLocalChecked());
-                    result->Set(context, String::NewFromUtf8(isolate, "x").ToLocalChecked(),
+                    (void)result->Set(context, String::NewFromUtf8(isolate, "x").ToLocalChecked(),
                                Number::New(isolate, data->location.x));
-                    result->Set(context, String::NewFromUtf8(isolate, "y").ToLocalChecked(),
+                    (void)result->Set(context, String::NewFromUtf8(isolate, "y").ToLocalChecked(),
                                Number::New(isolate, data->location.y));
-                    
+
                     Local<Value> argv[] = { result };
                     Local<Function> callback = selectionCallback.Get(isolate);
-                    callback->Call(context, Null(isolate), 1, argv);
+                    (void)callback->Call(context, Null(isolate), 1, argv);
                 }
                 
                 delete data;
@@ -255,11 +255,11 @@ void GetSelectedText(const FunctionCallbackInfo<Value>& args) {
     CFRelease(systemWideElement);
     
     Local<Object> result = Object::New(isolate);
-    result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
+    (void)result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
                String::NewFromUtf8(isolate, selectedText.c_str()).ToLocalChecked());
-    result->Set(context, String::NewFromUtf8(isolate, "appName").ToLocalChecked(),
+    (void)result->Set(context, String::NewFromUtf8(isolate, "appName").ToLocalChecked(),
                String::NewFromUtf8(isolate, appName.c_str()).ToLocalChecked());
-    
+
     args.GetReturnValue().Set(result);
 }
 

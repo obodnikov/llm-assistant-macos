@@ -36,14 +36,14 @@ void HandleMenuAction(NSString* actionId, NSString* selectedText) {
     Local<Context> context = isolate->GetCurrentContext();
 
     Local<Object> result = Object::New(isolate);
-    result->Set(context, String::NewFromUtf8(isolate, "action").ToLocalChecked(),
+    (void)result->Set(context, String::NewFromUtf8(isolate, "action").ToLocalChecked(),
                String::NewFromUtf8(isolate, [actionId UTF8String]).ToLocalChecked());
-    result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
+    (void)result->Set(context, String::NewFromUtf8(isolate, "text").ToLocalChecked(),
                String::NewFromUtf8(isolate, [selectedText UTF8String]).ToLocalChecked());
 
     Local<Value> argv[] = { result };
     Local<Function> callback = menuCallback.Get(isolate);
-    callback->Call(context, Null(isolate), 1, argv);
+    (void)callback->Call(context, Null(isolate), 1, argv);
 }
 
 } // end namespace for forward declaration

@@ -57,11 +57,11 @@ void GetFrontmostApplication(const FunctionCallbackInfo<Value>& args) {
     Local<Object> result = Object::New(isolate);
     
     if (frontApp) {
-        result->Set(context, String::NewFromUtf8(isolate, "name").ToLocalChecked(),
+        (void)result->Set(context, String::NewFromUtf8(isolate, "name").ToLocalChecked(),
                    String::NewFromUtf8(isolate, [[frontApp localizedName] UTF8String]).ToLocalChecked());
-        result->Set(context, String::NewFromUtf8(isolate, "bundleId").ToLocalChecked(),
+        (void)result->Set(context, String::NewFromUtf8(isolate, "bundleId").ToLocalChecked(),
                    String::NewFromUtf8(isolate, [[frontApp bundleIdentifier] UTF8String]).ToLocalChecked());
-        result->Set(context, String::NewFromUtf8(isolate, "pid").ToLocalChecked(),
+        (void)result->Set(context, String::NewFromUtf8(isolate, "pid").ToLocalChecked(),
                    Number::New(isolate, [frontApp processIdentifier]));
     }
     
@@ -105,7 +105,7 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
             CFStringRef title = nullptr;
             if (AXUIElementCopyAttributeValue(window, kAXTitleAttribute, (CFTypeRef*)&title) == kAXErrorSuccess && title) {
                 std::string titleStr = CFStringToString(title);
-                windowInfo->Set(context, String::NewFromUtf8(isolate, "title").ToLocalChecked(),
+                (void)windowInfo->Set(context, String::NewFromUtf8(isolate, "title").ToLocalChecked(),
                                String::NewFromUtf8(isolate, titleStr.c_str()).ToLocalChecked());
                 CFRelease(title);
             }
@@ -116,9 +116,9 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
                 CGPoint point;
                 if (AXValueGetValue((AXValueRef)position, (AXValueType)kAXValueCGPointType, &point)) {
                     Local<Object> pos = Object::New(isolate);
-                    pos->Set(context, String::NewFromUtf8(isolate, "x").ToLocalChecked(), Number::New(isolate, point.x));
-                    pos->Set(context, String::NewFromUtf8(isolate, "y").ToLocalChecked(), Number::New(isolate, point.y));
-                    windowInfo->Set(context, String::NewFromUtf8(isolate, "position").ToLocalChecked(), pos);
+                    (void)pos->Set(context, String::NewFromUtf8(isolate, "x").ToLocalChecked(), Number::New(isolate, point.x));
+                    (void)pos->Set(context, String::NewFromUtf8(isolate, "y").ToLocalChecked(), Number::New(isolate, point.y));
+                    (void)windowInfo->Set(context, String::NewFromUtf8(isolate, "position").ToLocalChecked(), pos);
                 }
                 CFRelease(position);
             }
@@ -129,9 +129,9 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
                 CGSize cgSize;
                 if (AXValueGetValue((AXValueRef)size, (AXValueType)kAXValueCGSizeType, &cgSize)) {
                     Local<Object> sizeObj = Object::New(isolate);
-                    sizeObj->Set(context, String::NewFromUtf8(isolate, "width").ToLocalChecked(), Number::New(isolate, cgSize.width));
-                    sizeObj->Set(context, String::NewFromUtf8(isolate, "height").ToLocalChecked(), Number::New(isolate, cgSize.height));
-                    windowInfo->Set(context, String::NewFromUtf8(isolate, "size").ToLocalChecked(), sizeObj);
+                    (void)sizeObj->Set(context, String::NewFromUtf8(isolate, "width").ToLocalChecked(), Number::New(isolate, cgSize.width));
+                    (void)sizeObj->Set(context, String::NewFromUtf8(isolate, "height").ToLocalChecked(), Number::New(isolate, cgSize.height));
+                    (void)windowInfo->Set(context, String::NewFromUtf8(isolate, "size").ToLocalChecked(), sizeObj);
                 }
                 CFRelease(size);
             }
@@ -143,11 +143,11 @@ void GetApplicationWindows(const FunctionCallbackInfo<Value>& args) {
                 if (CFBooleanGetValue((CFBooleanRef)focused)) {
                     isFocused = true;
                 }
-                windowInfo->Set(context, String::NewFromUtf8(isolate, "focused").ToLocalChecked(), v8::Boolean::New(isolate, isFocused));
+                (void)windowInfo->Set(context, String::NewFromUtf8(isolate, "focused").ToLocalChecked(), v8::Boolean::New(isolate, isFocused));
                 CFRelease(focused);
             }
-            
-            windowsArray->Set(context, i, windowInfo);
+
+            (void)windowsArray->Set(context, i, windowInfo);
         }
         
         CFRelease(windows);
@@ -185,38 +185,38 @@ void GetFocusedElement(const FunctionCallbackInfo<Value>& args) {
             CFStringRef role = nullptr;
             if (AXUIElementCopyAttributeValue(focusedElement, kAXRoleAttribute, (CFTypeRef*)&role) == kAXErrorSuccess && role) {
                 std::string roleStr = CFStringToString(role);
-                result->Set(context, String::NewFromUtf8(isolate, "role").ToLocalChecked(),
+                (void)result->Set(context, String::NewFromUtf8(isolate, "role").ToLocalChecked(),
                            String::NewFromUtf8(isolate, roleStr.c_str()).ToLocalChecked());
                 CFRelease(role);
             }
-            
+
             // Get element value (text content)
             CFStringRef value = nullptr;
             if (AXUIElementCopyAttributeValue(focusedElement, kAXValueAttribute, (CFTypeRef*)&value) == kAXErrorSuccess && value) {
                 std::string valueStr = CFStringToString(value);
-                result->Set(context, String::NewFromUtf8(isolate, "value").ToLocalChecked(),
+                (void)result->Set(context, String::NewFromUtf8(isolate, "value").ToLocalChecked(),
                            String::NewFromUtf8(isolate, valueStr.c_str()).ToLocalChecked());
                 CFRelease(value);
             }
-            
+
             // Get selected text
             CFStringRef selectedText = nullptr;
             if (AXUIElementCopyAttributeValue(focusedElement, kAXSelectedTextAttribute, (CFTypeRef*)&selectedText) == kAXErrorSuccess && selectedText) {
                 std::string selectedStr = CFStringToString(selectedText);
-                result->Set(context, String::NewFromUtf8(isolate, "selectedText").ToLocalChecked(),
+                (void)result->Set(context, String::NewFromUtf8(isolate, "selectedText").ToLocalChecked(),
                            String::NewFromUtf8(isolate, selectedStr.c_str()).ToLocalChecked());
                 CFRelease(selectedText);
             }
-            
+
             // Get text range
             CFTypeRef selectedRange = nullptr;
             if (AXUIElementCopyAttributeValue(focusedElement, kAXSelectedTextRangeAttribute, &selectedRange) == kAXErrorSuccess && selectedRange) {
                 CFRange range;
                 if (AXValueGetValue((AXValueRef)selectedRange, (AXValueType)kAXValueCFRangeType, &range)) {
                     Local<Object> rangeObj = Object::New(isolate);
-                    rangeObj->Set(context, String::NewFromUtf8(isolate, "location").ToLocalChecked(), Number::New(isolate, range.location));
-                    rangeObj->Set(context, String::NewFromUtf8(isolate, "length").ToLocalChecked(), Number::New(isolate, range.length));
-                    result->Set(context, String::NewFromUtf8(isolate, "selectedRange").ToLocalChecked(), rangeObj);
+                    (void)rangeObj->Set(context, String::NewFromUtf8(isolate, "location").ToLocalChecked(), Number::New(isolate, range.location));
+                    (void)rangeObj->Set(context, String::NewFromUtf8(isolate, "length").ToLocalChecked(), Number::New(isolate, range.length));
+                    (void)result->Set(context, String::NewFromUtf8(isolate, "selectedRange").ToLocalChecked(), rangeObj);
                 }
                 CFRelease(selectedRange);
             }
@@ -395,16 +395,16 @@ void GetElementAtPoint(const FunctionCallbackInfo<Value>& args) {
         CFStringRef role = nullptr;
         if (AXUIElementCopyAttributeValue(elementAtPoint, kAXRoleAttribute, (CFTypeRef*)&role) == kAXErrorSuccess && role) {
             std::string roleStr = CFStringToString(role);
-            result->Set(context, String::NewFromUtf8(isolate, "role").ToLocalChecked(),
+            (void)result->Set(context, String::NewFromUtf8(isolate, "role").ToLocalChecked(),
                        String::NewFromUtf8(isolate, roleStr.c_str()).ToLocalChecked());
             CFRelease(role);
         }
-        
+
         // Get element description
         CFStringRef description = nullptr;
         if (AXUIElementCopyAttributeValue(elementAtPoint, kAXDescriptionAttribute, (CFTypeRef*)&description) == kAXErrorSuccess && description) {
             std::string descStr = CFStringToString(description);
-            result->Set(context, String::NewFromUtf8(isolate, "description").ToLocalChecked(),
+            (void)result->Set(context, String::NewFromUtf8(isolate, "description").ToLocalChecked(),
                        String::NewFromUtf8(isolate, descStr.c_str()).ToLocalChecked());
             CFRelease(description);
         }

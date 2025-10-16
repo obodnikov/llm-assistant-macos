@@ -27,7 +27,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onThemeChanged: (callback) => {
     ipcRenderer.on('theme-changed', callback);
     return () => ipcRenderer.removeListener('theme-changed', callback);
-  }
+  },
+
+  // Model management APIs
+  getAvailableModels: () => ipcRenderer.invoke('get-available-models'),
+  getProviderModels: (providerId) => ipcRenderer.invoke('get-provider-models', providerId),
+  getEnabledProviders: () => ipcRenderer.invoke('get-enabled-providers'),
+  setProviderEnabled: (providerId, enabled) => ipcRenderer.invoke('set-provider-enabled', providerId, enabled),
+  addCustomModel: (providerId, model) => ipcRenderer.invoke('add-custom-model', providerId, model),
+  removeModel: (providerId, modelId) => ipcRenderer.invoke('remove-model', providerId, modelId),
+  reloadModelConfig: () => ipcRenderer.invoke('reload-model-config')
+
 });
 
 // Expose a limited API for text selection and clipboard

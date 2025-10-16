@@ -1,0 +1,142 @@
+{
+  "providers": {
+    "openai": {
+      "name": "OpenAI",
+      "enabled": true,
+      "models": [
+        {
+          "id": "gpt-5",
+          "name": "GPT-5",
+          "description": "Full flagship model, highest quality",
+          "speed": "medium",
+          "quality": "excellent",
+          "cost": "high",
+          "default": true
+        },
+        {
+          "id": "gpt-5-mini",
+          "name": "GPT-5 Mini",
+          "description": "Lightweight version, optimized for speed",
+          "speed": "fast",
+          "quality": "excellent",
+          "cost": "medium"
+        },
+        {
+          "id": "gpt-5-nano",
+          "name": "GPT-5 Nano",
+          "description": "Most lightweight and cost-effective",
+          "speed": "very-fast",
+          "quality": "good",
+          "cost": "low"
+        },
+        {
+          "id": "gpt-4.1",
+          "name": "GPT-4.1",
+          "description": "Full version, superior reasoning and context",
+          "speed": "medium",
+          "quality": "excellent",
+          "cost": "high"
+        },
+        {
+          "id": "gpt-4.1-mini",
+          "name": "GPT-4.1 Mini",
+          "description": "Simplified version, speed and cost optimized",
+          "speed": "fast",
+          "quality": "very-good",
+          "cost": "medium"
+        },
+        {
+          "id": "gpt-4.1-nano",
+          "name": "GPT-4.1 Nano",
+          "description": "Micro-model for simple or bulk tasks",
+          "speed": "very-fast",
+          "quality": "good",
+          "cost": "low"
+        }
+      ]
+    },
+    "anthropic": {
+      "name": "Anthropic Claude",
+      "enabled": false,
+      "models": [
+        {
+          "id": "claude-3-opus-20240229",
+          "name": "Claude 3 Opus",
+          "description": "Most capable Claude model",
+          "speed": "medium",
+          "quality": "excellent",
+          "cost": "high"
+        },
+        {
+          "id": "claude-3-sonnet-20240229",
+          "name": "Claude 3 Sonnet",
+          "description": "Balanced performance",
+          "speed": "fast",
+          "quality": "excellent",
+          "cost": "medium",
+          "default": true
+        },
+        {
+          "id": "claude-3-haiku-20240307",
+          "name": "Claude 3 Haiku",
+          "description": "Fast and cost-effective",
+          "speed": "very-fast",
+          "quality": "good",
+          "cost": "low"
+        }
+      ]
+    },
+    "perplexity": {
+      "name": "Perplexity",
+      "enabled": false,
+      "models": [
+        {
+          "id": "pplx-7b-online",
+          "name": "Perplexity 7B Online",
+          "description": "Real-time web search",
+          "speed": "fast",
+          "quality": "good",
+          "cost": "low",
+          "default": true
+        },
+        {
+          "id": "pplx-70b-online",
+          "name": "Perplexity 70B Online",
+          "description": "Advanced with web search",
+          "speed": "medium",
+          "quality": "excellent",
+          "cost": "medium"
+        }
+      ]
+    },
+    "ollama": {
+      "name": "Ollama (Local)",
+      "enabled": false,
+      "endpoint": "http://localhost:11434",
+      "models": [
+        {
+          "id": "llama2",
+          "name": "Llama 2",
+          "description": "Local processing",
+          "speed": "varies",
+          "quality": "good",
+          "cost": "free",
+          "default": true
+        },
+        {
+          "id": "mistral",
+          "name": "Mistral",
+          "description": "Local processing",
+          "speed": "varies",
+          "quality": "good",
+          "cost": "free"
+        }
+      ]
+    }
+  },
+  "preferences": {
+    "defaultProvider": "openai",
+    "autoDetectOllama": true,
+    "fallbackProvider": "openai"
+  }
+}

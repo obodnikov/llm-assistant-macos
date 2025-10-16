@@ -1,3 +1,4 @@
+const modelManager = require('./modelManager');
 const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
@@ -305,6 +306,48 @@ function initializeOpenAI() {
   }
 }
 
+
+// Model management IPC handlers
+ipcMain.handle('get-available-models', async () => {
+  return modelManager.getAvailableModels();
+});
+
+ipcMain.handle('get-provider-models', async (event, providerId) => {
+  return modelManager.getProviderModels(providerId);
+});
+
+ipcMain.handle('get-enabled-providers', async () => {
+  return modelManager.getEnabledProviders();
+});
+
+ipcMain.handle('set-provider-enabled', async (event, providerId, enabled) => {
+  modelManager.setProviderEnabled(providerId, enabled);
+  return true;
+});
+
+ipcMain.handle('add-custom-model', async (event, providerId, model) => {
+  try {
+    modelManager.addModel(providerId, model);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('remove-model', async (event, providerId, modelId) => {
+  try {
+    modelManager.removeModel(providerId, modelId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('reload-model-config', async () => {
+  modelManager.loadConfig();
+  return modelManager.getAvailableModels();
+});
+
 // IPC handlers for renderer processes
 ipcMain.handle('get-config', (event, key) => {
   return store.get(key);
@@ -392,7 +435,13 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
   }
   
   try {
-    const model = store.get('ai-model', 'gpt-4');
+    const modelFullId = store.get('ai-model', 'gpt-4');
+
+    // Parse model ID to extract the actual model name for the API
+    // Format: "provider:model-id" -> extract just "model-id"
+    const model = modelFullId.includes(':')
+      ? modelFullId.split(':').slice(1).join(':')
+      : modelFullId;
 
     // Build system prompt based on context using configurable prompts
     let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for email and text processing.');
@@ -418,11 +467,16 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
       messages.push({ role: 'user', content: prompt });
     }
     
+    // GPT-5 models use max_completion_tokens and temperature: 1, GPT-4 and older use max_tokens and support temperature
+    const isGPT5 = model.startsWith('gpt-5');
+    const apiParams = isGPT5
+      ? { max_completion_tokens: 1000, temperature: 1 }
+      : { max_tokens: 1000, temperature: 0.7 };
+
     const response = await openaiClient.chat.completions.create({
       model: model,
       messages: messages,
-      max_tokens: 1000,
-      temperature: 0.7
+      ...apiParams
     });
     
     return response.choices[0].message.content;

@@ -169,6 +169,9 @@ function toggleAssistant() {
 
     assistantPanel.show();
     assistantPanel.focus();
+
+    // Notify renderer that window is shown so it can reset state
+    assistantPanel.webContents.send('window-shown');
   }
 }
 

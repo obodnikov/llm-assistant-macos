@@ -111,6 +111,9 @@ function createAssistantPanel() {
 
   assistantPanel.loadFile(path.join(__dirname, '../renderer/assistant.html'));
 
+  // Make window visible on all macOS Spaces/desktops
+  assistantPanel.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
   // Show immediately after DOM is ready
   assistantPanel.webContents.once('dom-ready', () => {
     assistantPanel.show();

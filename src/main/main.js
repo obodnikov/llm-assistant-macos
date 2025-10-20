@@ -111,7 +111,7 @@ function createAssistantPanel() {
 
   assistantPanel.loadFile(path.join(__dirname, '../renderer/assistant.html'));
 
-  // Make window visible on all macOS Spaces/desktops
+  // Make window visible on all macOS Spaces/desktops so it appears on current desktop
   assistantPanel.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   // Show immediately after DOM is ready
@@ -120,11 +120,8 @@ function createAssistantPanel() {
     assistantPanel.focus();
   });
 
-  assistantPanel.on('blur', () => {
-    if (!isDev) {
-      assistantPanel.hide();
-    }
-  });
+  // Note: Window stays visible when switching apps or desktops
+  // Only hides when user explicitly clicks hide button or presses Command-Option-L
 }
 
 

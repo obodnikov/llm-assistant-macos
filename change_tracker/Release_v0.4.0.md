@@ -78,8 +78,24 @@ This release focuses on improving the user experience with window management and
 3. Reopen with Command-Option-L
 4. Verify input field is cleared and no previous results are shown
 
+## Documentation Updates
+
+### Files Updated to v0.4.0
+- `README.md` - Updated version badge, keyboard shortcuts, usage instructions, and version history
+- `package.json` - Updated version to 0.4.0
+- `docs/SETUP.md` - Updated keyboard shortcuts from Cmd+Shift+L to Cmd+Option+L, updated version info
+- `docs/integration_guide.md` - Updated usage patterns with correct keyboard shortcuts
+- `docs/Model_Management_Quick_Reference.md` - Updated version info
+
+### Keyboard Shortcut Changes
+- **Old**: `Cmd+Shift+L`
+- **New**: `Cmd+Option+L`
+- All documentation updated to reflect the new keyboard shortcut
+
 ## Migration Guide
 No migration needed. Changes are backwards compatible.
+
+**Note for users:** The keyboard shortcut has changed from `Cmd+Shift+L` to `Cmd+Option+L`. Update any custom documentation or workflows accordingly.
 
 ## Known Issues
 None reported for this release.

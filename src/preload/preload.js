@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('theme-changed', callback);
   },
 
+  onWindowShown: (callback) => {
+    ipcRenderer.on('window-shown', callback);
+    return () => ipcRenderer.removeListener('window-shown', callback);
+  },
+
   // Model management APIs
   getAvailableModels: () => ipcRenderer.invoke('get-available-models'),
   getProviderModels: (providerId) => ipcRenderer.invoke('get-provider-models', providerId),

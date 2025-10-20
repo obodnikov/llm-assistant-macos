@@ -188,6 +188,13 @@ class AssistantPanel {
     if (showFilteredBtn) {
       showFilteredBtn.addEventListener('click', () => this.showFilteredDetails());
     }
+
+    // Listen for window shown event to reset state
+    if (window.electronAPI && window.electronAPI.onWindowShown) {
+      window.electronAPI.onWindowShown(() => {
+        this.resetOnShow();
+      });
+    }
   }
 
   // Add the quitApp method:
@@ -692,6 +699,27 @@ Content: ${msg.content}
       this.privacyStatus.textContent = '🔒 Safe';
       this.privacyStatus.className = 'privacy-safe';
     }
+  }
+
+  resetOnShow() {
+    // Clear all UI state
+    this.clearAll();
+
+    // Clear mail context
+    this.hideMailContext();
+
+    // Refresh mail context for current state
+    this.checkMailContext();
+
+    // Clear any stored text
+    this.storedText = null;
+
+    // Clear results content
+    if (this.resultsContent) {
+      this.resultsContent.innerHTML = '';
+    }
+
+    console.log('Assistant state reset on window show');
   }
 
   async hidePanel() {

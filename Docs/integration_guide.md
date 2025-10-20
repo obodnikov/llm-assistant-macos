@@ -321,20 +321,21 @@ npm run build-native
 
 ### Pattern 1: Quick Email Summary
 1. Select email in Mail.app
-2. `Cmd+Shift+L` to open assistant
+2. `Cmd+Option+L` to open assistant
 3. Click "Summarize"
 4. (Optional) Edit prompt
 5. Click "Process"
+6. Window stays visible - press `Cmd+Option+L` again to hide
 
 ### Pattern 2: Custom Email Processing
 1. Select email in Mail.app
-2. `Cmd+Shift+L` to open assistant
+2. `Cmd+Option+L` to open assistant
 3. Type custom prompt: "Extract action items from this email"
 4. Click "Process"
 
 ### Pattern 3: Draft Reply
 1. Select email in Mail.app
-2. `Cmd+Shift+L` to open assistant
+2. `Cmd+Option+L` to open assistant
 3. Click "Draft Reply"
 4. Edit prompt: "Draft a professional response accepting the offer"
 5. Click "Process"

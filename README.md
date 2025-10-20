@@ -2,7 +2,7 @@
 
 AI-powered assistant with **native macOS integration** and **Mail.app support**. Get intelligent help with email composition, text processing, and more using OpenAI's GPT models.
 
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![macOS](https://img.shields.io/badge/macOS-11.0+-blue)
 ![Node](https://img.shields.io/badge/node-24.9.0-brightgreen)
@@ -74,13 +74,16 @@ npm start
 
 3. **Test It**:
    - Open Mail.app, select an email
-   - Press `Cmd+Shift+L`
+   - Press `Cmd+Option+L`
    - Click "Summarize"
 
 ## 📖 Usage
 
 ### Global Access
-- **Hotkey**: `Cmd+Shift+L` - Open assistant from anywhere
+- **Hotkey**: `Cmd+Option+L` - Toggle assistant from anywhere
+  - Opens on your current desktop/Space
+  - Stays visible when switching apps
+  - Only hides when you press the hotkey again or click hide button
 - **Menu Bar**: Click app icon in menu bar
 - **Mail Integration**: Auto-detects when Mail.app is active
 
@@ -95,11 +98,11 @@ When viewing an email in Mail.app:
 
 #### Workflow
 1. Open Mail.app and select an email
-2. Keep Mail as frontmost window
-3. Press `Cmd+Shift+L`
-4. Click a quick action (e.g., "Summarize")
-5. Edit prompt if desired
-6. Click "Process"
+2. Press `Cmd+Option+L` to open the assistant
+3. Click a quick action (e.g., "Summarize")
+4. Edit prompt if desired
+5. Click "Process"
+6. Assistant window stays visible - press `Cmd+Option+L` again to hide
 
 ### Custom Prompts
 Instead of quick actions, type custom requests:
@@ -148,11 +151,11 @@ All prompts support customization to match your specific needs and tone preferen
 ### Keyboard Shortcuts
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+Shift+L` | Toggle assistant |
-| `Cmd+,` | Open settings |
-| `Esc` | Hide panel |
-| `Cmd+W` | Close panel |
-| `Cmd+Q` | Quit application |
+| `Cmd+Option+L` | Toggle assistant (show/hide) |
+| `Cmd+Enter` | Process request |
+| `Cmd+Q` | Quit application (when assistant is focused) |
+
+**Note:** The assistant window stays visible when switching apps and only hides when you explicitly toggle it with `Cmd+Option+L` or click the hide button.
 
 ## 🔧 Native Modules
 
@@ -370,7 +373,22 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔄 Version History
 
-### v0.3.0 (Current)
+### v0.4.0 (Current)
+- ✅ **Improved Window Management**
+  - Window now appears on current desktop/Space when invoked
+  - Stays visible when switching between applications
+  - No longer auto-hides on focus loss
+  - Only hides when explicitly toggled with `Cmd+Option+L` or hide button clicked
+- ✅ **Automatic State Reset**
+  - Conversation state clears when window is reopened
+  - Fresh context on each invocation
+  - Mail context refreshed automatically
+- ✅ **Enhanced User Experience**
+  - More predictable window behavior
+  - Better multi-desktop support
+  - Visible on all Spaces for easy access
+
+### v0.3.0
 - ✅ **Flexible Model Configuration System**
   - Support for multiple AI providers (OpenAI, Anthropic, Perplexity, Ollama)
   - Dynamic model loading from `config/models.json`

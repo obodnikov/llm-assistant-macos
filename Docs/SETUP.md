@@ -39,7 +39,7 @@ npm start
    - **Accessibility** - Required for text selection and manipulation
    - **Automation for Mail.app** - Required for Mail integration
 2. **Configure API Key** via Settings panel (⚙️)
-3. **Test Mail Integration** - Open Mail.app, select an email, press `Cmd+Shift+L`
+3. **Test Mail Integration** - Open Mail.app, select an email, press `Cmd+Option+L`
 
 ## Native Modules Setup
 
@@ -228,9 +228,9 @@ tccutil reset AppleEvents
 
 #### Workflow
 1. **Open Mail.app** and select an email
-2. **Keep Mail frontmost** (active window)
-3. Press **`Cmd+Shift+L`** to open LLM Assistant
-4. Should show: **"Mail Context Detected - Viewing email: [subject]"**
+2. Press **`Cmd+Option+L`** to open LLM Assistant
+3. Should show: **"Mail Context Detected - Viewing email: [subject]"**
+4. Window stays visible - press **`Cmd+Option+L`** again to hide
 
 #### Quick Actions
 When Mail context is detected:
@@ -265,18 +265,18 @@ If native modules fail to load:
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+Shift+L` | Toggle LLM Assistant panel |
-| `Cmd+,` | Open Settings |
-| `Cmd+W` | Close panel |
-| `Cmd+Q` | Quit application |
-| `Esc` | Hide panel |
+| `Cmd+Option+L` | Toggle LLM Assistant panel (show/hide) |
+| `Cmd+Enter` | Process request |
+| `Cmd+Q` | Quit application (when assistant is focused) |
+
+**Note:** The assistant window stays visible when switching apps and only hides when you explicitly toggle it with `Cmd+Option+L` or click the hide button.
 
 ### Customizing Shortcuts
 Edit `src/main/main.js`:
 ```javascript
 // Find and modify:
-globalShortcut.register('CommandOrControl+Shift+L', () => {
-  toggleAssistantPanel();
+globalShortcut.register('CommandOrControl+Alt+L', () => {
+  toggleAssistant();
 });
 ```
 
@@ -465,5 +465,5 @@ ls -la build/Release/
 
 ---
 
-**Version**: 0.2.0 with Native Modules
-**Last Updated**: 2025-09-30
+**Version**: 0.4.0
+**Last Updated**: 2025-10-20

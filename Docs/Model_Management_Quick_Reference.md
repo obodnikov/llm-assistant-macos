@@ -264,6 +264,6 @@ constructor() {
 
 ## Version Info
 
-- **Current**: v0.3.0 with configurable models
+- **Current**: v0.4.0 with improved window management
 - **Model Config**: v1.0
 - **Supported Providers**: OpenAI, Anthropic, Perplexity, Ollama

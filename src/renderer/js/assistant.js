@@ -3,18 +3,20 @@ class AssistantPanel {
     this.currentContext = null;
     this.isProcessing = false;
     this.settings = {};
-    
+    this.availableWindows = [];
+    this.selectedWindowIndex = null;
+
     // Simple initialization - no complex waiting
     this.initializeElements();
     this.bindEvents();
-    this.loadAvailableModels(); 
+    this.loadAvailableModels();
     this.loadSettings();
     this.updateTheme();
     this.checkMailContext();
 
     this.nativeModulesAvailable = false;
     this.checkNativeModules();
-    
+
     // Remove loading overlay and show content
     this.hideLoadingOverlay();
   }
@@ -95,23 +97,28 @@ class AssistantPanel {
     this.hideBtn = document.getElementById('hide-btn');     // NEW: Hide button
     this.quitBtn = document.getElementById('quit-btn');     // NEW: Quit button
     this.settingsBtn = document.getElementById('settings-btn');
-    
+
     // Context elements
     this.contextIndicator = document.getElementById('context-indicator');
     this.contextDetails = document.querySelector('.context-details');
-    
+
+    // Window selector elements
+    this.windowSelector = document.getElementById('window-selector');
+    this.windowDropdown = document.getElementById('window-dropdown');
+    this.refreshWindowsBtn = document.getElementById('refresh-windows-btn');
+
     // Privacy elements
     this.privacyStatus = document.getElementById('privacy-status');
     this.privacyWarning = document.getElementById('privacy-warning');
     this.filteredCount = document.getElementById('filtered-count');
-    
+
     // Results elements
     this.processing = document.getElementById('processing');
     this.results = document.getElementById('results');
     this.resultsContent = document.getElementById('results-content');
     this.copyResultBtn = document.getElementById('copy-result');
     this.applyResultBtn = document.getElementById('apply-result');
-    
+
     // Settings elements
     this.settingsPanel = document.getElementById('settings-panel');
     this.settingsClose = document.getElementById('settings-close');
@@ -145,7 +152,15 @@ class AssistantPanel {
     if (this.quitBtn) {
       this.quitBtn.addEventListener('click', () => this.quitApp());
     }
-    
+
+    // Window selector controls
+    if (this.refreshWindowsBtn) {
+      this.refreshWindowsBtn.addEventListener('click', () => this.refreshMailWindows());
+    }
+    if (this.windowDropdown) {
+      this.windowDropdown.addEventListener('change', () => this.applySelectedWindow());
+    }
+
     // Settings
     if (this.settingsBtn) {
       this.settingsBtn.addEventListener('click', () => this.showSettings());
@@ -350,13 +365,47 @@ class AssistantPanel {
   async checkMailContext() {
     try {
       if (window.electronAPI) {
-        const context = await window.electronAPI.getMailContext();
-        console.log('📧 Mail context received:', JSON.stringify(context, null, 2));
-        this.updateMailContext(context);
+        // Get all available Mail windows
+        const result = await window.electronAPI.getAllMailWindows();
+        console.log('📧 Mail windows received:', JSON.stringify(result, null, 2));
+
+        if (result.error) {
+          console.log('Mail not available:', result.error);
+          this.hideMailContext();
+          this.hideWindowSelector();
+          return;
+        }
+
+        const windows = result.windows || [];
+
+        if (windows.length === 0) {
+          console.log('No Mail windows found');
+          this.hideMailContext();
+          this.hideWindowSelector();
+          return;
+        }
+
+        this.availableWindows = windows;
+
+        if (windows.length === 1) {
+          // Auto-select the only window
+          console.log('Single window detected, auto-selecting');
+          this.selectedWindowIndex = windows[0].windowIndex;
+          await this.loadWindowContext(this.selectedWindowIndex);
+          this.hideWindowSelector();
+        } else {
+          // Multiple windows - show selector
+          console.log(`Multiple windows detected (${windows.length}), showing selector`);
+          this.showWindowSelector(windows);
+          // Auto-select first window by default
+          this.selectedWindowIndex = windows[0].windowIndex;
+          await this.loadWindowContext(this.selectedWindowIndex);
+        }
       }
     } catch (error) {
       console.log('No mail context available:', error);
       this.hideMailContext();
+      this.hideWindowSelector();
     }
   }
 
@@ -397,6 +446,87 @@ class AssistantPanel {
       this.contextIndicator.classList.add('hidden');
     }
     this.currentContext = null;
+  }
+
+  showWindowSelector(windows) {
+    if (!this.windowSelector || !this.windowDropdown) return;
+
+    // Clear existing options
+    this.windowDropdown.innerHTML = '';
+
+    // Create option for each window
+    windows.forEach((win, index) => {
+      const option = document.createElement('option');
+      option.value = win.windowIndex;
+
+      // Format: "[Type] Preview/Title"
+      const icon = this.getWindowIcon(win.windowType);
+      const label = win.preview || win.title || 'Untitled';
+      option.textContent = `${icon} ${win.windowType} - ${label}`;
+
+      if (index === 0) {
+        option.selected = true;
+      }
+
+      this.windowDropdown.appendChild(option);
+    });
+
+    // Show the selector
+    this.windowSelector.classList.remove('hidden');
+  }
+
+  hideWindowSelector() {
+    if (this.windowSelector) {
+      this.windowSelector.classList.add('hidden');
+    }
+  }
+
+  getWindowIcon(windowType) {
+    const icons = {
+      'Composer': '✉️',
+      'compose': '✉️',
+      'Viewer': '📖',
+      'viewer': '📖',
+      'MAIN': '📬',
+      'mailbox': '📬',
+      'unknown': '📧'
+    };
+    return icons[windowType] || icons.unknown;
+  }
+
+  async refreshMailWindows() {
+    console.log('Refreshing Mail windows...');
+    await this.checkMailContext();
+  }
+
+  async applySelectedWindow() {
+    if (!this.windowDropdown) {
+      console.log('Window dropdown not available');
+      return;
+    }
+
+    const selectedIndex = parseInt(this.windowDropdown.value);
+    if (isNaN(selectedIndex)) {
+      console.log('No valid window selected');
+      return;
+    }
+
+    this.selectedWindowIndex = selectedIndex;
+    console.log('Applying selected window:', this.selectedWindowIndex);
+    await this.loadWindowContext(this.selectedWindowIndex);
+  }
+
+  async loadWindowContext(windowIndex) {
+    try {
+      if (!window.electronAPI) return;
+
+      const context = await window.electronAPI.getMailWindowContext(windowIndex);
+      console.log('📧 Window context loaded:', JSON.stringify(context, null, 2));
+      this.updateMailContext(context);
+    } catch (error) {
+      console.error('Failed to load window context:', error);
+      this.hideMailContext();
+    }
   }
 
   updateQuickActions(context) {

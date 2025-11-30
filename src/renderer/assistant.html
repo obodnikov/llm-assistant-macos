@@ -93,6 +93,17 @@
                 </div>
             </div>
 
+            <!-- Window selector (shown when multiple Mail windows detected) -->
+            <div id="window-selector" class="window-selector hidden">
+                <div class="window-selector-header">
+                    <label for="window-dropdown" class="selector-title">Mail window:</label>
+                    <button id="refresh-windows-btn" class="icon-btn" title="Refresh window list">🔄</button>
+                </div>
+                <select id="window-dropdown" class="window-dropdown">
+                    <!-- Options will be dynamically added here -->
+                </select>
+            </div>
+
             <!-- Quick action buttons -->
             <div id="quick-actions" class="quick-actions">
                 <button class="action-btn" data-action="summarize">

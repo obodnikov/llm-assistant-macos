@@ -1,9 +1,15 @@
-const modelManager = require('./modelManager');
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme, nativeImage } = require('electron');
 const path = require('path');
+const electron = require('electron');
+const app = electron.app;
+const BrowserWindow = electron.BrowserWindow;
+const globalShortcut = electron.globalShortcut;
+const ipcMain = electron.ipcMain;
+const Menu = electron.Menu;
+const nativeTheme = electron.nativeTheme;
+const nativeImage = electron.nativeImage;
+const modelManager = require('./modelManager');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');
-// 1. ADD AT TOP - Import native modules
 const { nativeModules } = require('../../native-modules');
 
 // Initialize config store
@@ -18,16 +24,6 @@ let nativeModulesReady = false;
 
 // Development mode check
 const isDev = process.argv.includes('--dev');
-
-// Set dock icon (if you want to show it)
-if (process.platform === 'darwin') {
-  const iconPath = path.join(__dirname, '../../assets/icons/icon.png');
-  const icon = nativeImage.createFromPath(iconPath);
-  app.dock.setIcon(icon);
-  
-  // Or hide it for background app (as in your current setup)
-  app.dock.hide();
-}
 
 // 3. ADD GLOBAL CALLBACK
 global.nativeModuleCallback = (event, data) => {
@@ -576,6 +572,179 @@ ipcMain.handle('get-mail-context', async () => {
 
   } catch (error) {
     return { type: 'error', error: `Mail integration failed: ${error.message}` };
+  }
+});
+
+// Mail.app integration - Get list of all Mail windows
+ipcMain.handle('get-all-mail-windows', async () => {
+  // First check if Mail is running
+  const checkMailRunningScript = `
+    tell application "System Events"
+      return (name of processes) contains "Mail"
+    end tell
+  `;
+
+  try {
+    const isRunning = await executeAppleScript(checkMailRunningScript);
+    if (isRunning.trim() !== 'true') {
+      return { error: 'Mail app is not running' };
+    }
+
+    // Enumerate all Mail windows
+    const enumerateWindowsScript = `
+      tell application "Mail"
+        set windowList to ""
+
+        repeat with currentWindow in (every window whose visible is true)
+          try
+            set windowTitle to name of currentWindow as string
+            set windowIndex to index of currentWindow
+
+            if windowTitle is "" or windowTitle is missing value then
+              error "Skip empty window"
+            end if
+
+            set windowType to "VIEWER"
+            set preview to ""
+
+            try
+              tell currentWindow
+                set msgs to every outgoing message
+                if (count of msgs) > 0 then
+                  set windowType to "Composer"
+                  set msg to item 1 of msgs
+                  try
+                    set preview to subject of msg as string
+                    if preview is missing value then
+                      set preview to "New Message"
+                    end if
+                  on error
+                    set preview to "New Message"
+                  end try
+                end if
+              end tell
+            end try
+
+            if windowType is "VIEWER" then
+              try
+                if windowTitle contains "Inbox" or windowTitle contains "Sent" or windowTitle contains "Drafts" or windowTitle contains "Junk" or windowTitle is "Mail" then
+                  set windowType to "MAIN"
+                  set preview to windowTitle
+                else
+                  set windowType to "Viewer"
+                  set preview to windowTitle
+                end if
+              end try
+            end if
+
+            set escapedTitle to my replaceText(windowTitle, quote, "\\\\\\"")
+            set escapedPreview to my replaceText(preview, quote, "\\\\\\"")
+
+            set windowJson to "{" & quote & "windowIndex" & quote & ":" & windowIndex & "," & quote & "title" & quote & ":" & quote & escapedTitle & quote & "," & quote & "windowType" & quote & ":" & quote & windowType & quote & "," & quote & "preview" & quote & ":" & quote & escapedPreview & quote & "}"
+
+            if windowList is "" then
+              set windowList to windowJson
+            else
+              set windowList to windowList & "|||" & windowJson
+            end if
+          on error errMsg
+          end try
+        end repeat
+
+        return windowList
+      end tell
+
+      on replaceText(theText, searchString, replacementString)
+        set AppleScript's text item delimiters to searchString
+        set theTextItems to text items of theText
+        set AppleScript's text item delimiters to replacementString
+        set theText to theTextItems as string
+        set AppleScript's text item delimiters to ""
+        return theText
+      end replaceText
+    `;
+
+    const result = await executeAppleScript(enumerateWindowsScript);
+
+    // Parse the custom format
+    const windows = [];
+    if (result && result.trim()) {
+      const windowStrings = result.split('|||');
+      for (const winStr of windowStrings) {
+        try {
+          const win = JSON.parse(winStr);
+          windows.push(win);
+        } catch (e) {
+          console.error('Failed to parse window:', winStr, e);
+        }
+      }
+    }
+
+    return { windows };
+
+  } catch (error) {
+    return { error: `Failed to enumerate Mail windows: ${error.message}` };
+  }
+});
+
+// Get context for a specific Mail window by index
+ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
+  try {
+    const getWindowContextScript = `
+      tell application "Mail"
+        set targetWindow to window ${windowIndex}
+
+        -- Try to detect window type
+        set windowType to "unknown"
+        set content to ""
+        set subject to ""
+
+        -- Check if compose window
+        try
+          set msgs to every outgoing message of targetWindow
+          if (count of msgs) > 0 then
+            set windowType to "compose"
+            set msg to item 1 of msgs
+            set subject to subject of msg as string
+            set content to content of msg as string
+            return windowType & "|||SEP|||" & subject & "|||SEP|||" & content
+          end if
+        end try
+
+        -- Not compose, might be viewer - try to get selected messages
+        try
+          activate
+          set index of targetWindow to 1
+          delay 0.1
+          set selectedMessages to selection
+          if (count of selectedMessages) > 0 then
+            set firstMessage to item 1 of selectedMessages
+            set windowType to "viewer"
+            set subject to subject of firstMessage as string
+            set content to content of firstMessage as string
+            set sender to sender of firstMessage as string
+            return windowType & "|||SEP|||" & subject & "|||SEP|||" & content & "|||SEP|||" & sender
+          end if
+        end try
+
+        -- If we got here, it's likely a mailbox view
+        return "mailbox|||SEP|||Mailbox View|||SEP|||"
+      end tell
+    `;
+
+    const result = await executeAppleScript(getWindowContextScript);
+    const parts = result.split('|||SEP|||');
+
+    if (parts[0] === 'compose') {
+      return { type: 'compose', subject: parts[1], content: parts[2] };
+    } else if (parts[0] === 'viewer') {
+      return { type: 'viewer', subject: parts[1], content: parts[2], sender: parts[3] };
+    } else {
+      return { type: 'mailbox' };
+    }
+
+  } catch (error) {
+    return { type: 'error', error: `Failed to get window context: ${error.message}` };
   }
 });
 

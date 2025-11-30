@@ -686,8 +686,54 @@ textarea:focus-visible {
   .assistant-panel {
     max-height: 90vh;
   }
-  
+
   .results {
     max-height: 150px;
   }
+}
+
+/* ===== WINDOW SELECTOR ===== */
+
+.window-selector {
+  padding: var(--spacing-md);
+  margin: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  animation: slideIn 0.2s ease-out;
+}
+
+.window-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.selector-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.window-dropdown {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.window-dropdown:hover {
+  border-color: var(--accent-color);
+}
+
+.window-dropdown:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }

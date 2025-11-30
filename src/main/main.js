@@ -687,35 +687,34 @@ ipcMain.handle('get-all-mail-windows', async () => {
   }
 });
 
-// Get context for a specific Mail window by index
-ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
+// Get current Mail selection (simplified - no window-specific context)
+ipcMain.handle('get-mail-window-context', async (event, windowIndex, windowTitle) => {
   try {
-    const getWindowContextScript = `
+    const getSelectionScript = `
       tell application "Mail"
-        set targetWindow to window ${windowIndex}
-
-        -- Try to detect window type
         set windowType to "unknown"
         set msgContent to ""
         set msgSubject to ""
+        set msgSender to ""
 
-        -- Check if compose window
+        -- Check for composer windows first
         try
-          set msgs to every outgoing message of targetWindow
-          if (count of msgs) > 0 then
-            set windowType to "compose"
-            set msg to item 1 of msgs
-            set msgSubject to subject of msg as string
-            set msgContent to content of msg as string
-            return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent
-          end if
+          repeat with w in (every window whose visible is true)
+            try
+              set msgs to every outgoing message of w
+              if (count of msgs) > 0 then
+                set windowType to "compose"
+                set msg to item 1 of msgs
+                set msgSubject to subject of msg as string
+                set msgContent to content of msg as string
+                return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent
+              end if
+            end try
+          end repeat
         end try
 
-        -- Not compose, might be viewer - try to get selected messages
+        -- Get currently selected message (global selection)
         try
-          activate
-          set index of targetWindow to 1
-          delay 0.1
           set selectedMessages to selection
           if (count of selectedMessages) > 0 then
             set firstMessage to item 1 of selectedMessages
@@ -727,12 +726,12 @@ ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
           end if
         end try
 
-        -- If we got here, it's likely a mailbox view
-        return "mailbox|||SEP|||Mailbox View|||SEP|||"
+        -- No selection - it's a mailbox view
+        return "mailbox|||SEP|||No email selected|||SEP|||"
       end tell
     `;
 
-    const result = await executeAppleScript(getWindowContextScript);
+    const result = await executeAppleScript(getSelectionScript);
     const parts = result.split('|||SEP|||');
 
     if (parts[0] === 'compose') {
@@ -744,7 +743,7 @@ ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
     }
 
   } catch (error) {
-    return { type: 'error', error: `Failed to get window context: ${error.message}` };
+    return { type: 'error', error: `Failed to get Mail selection: ${error.message}` };
   }
 });
 

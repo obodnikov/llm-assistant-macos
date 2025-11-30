@@ -411,7 +411,7 @@ class AssistantPanel {
 
   updateMailContext(context) {
     console.log('📧 Updating mail context:', context);
-    if (!context || !context.type) {
+    if (!context || !context.type || context.type === 'error') {
       console.log('⚠️ No valid context type, hiding mail context');
       this.hideMailContext();
       return;
@@ -421,7 +421,7 @@ class AssistantPanel {
     if (this.contextIndicator) {
       this.contextIndicator.classList.remove('hidden');
     }
-    
+
     if (context.type === 'compose') {
       if (this.contextDetails) {
         this.contextDetails.textContent = 'Composing email';
@@ -437,7 +437,7 @@ class AssistantPanel {
         this.contextDetails.textContent = `${count} emails in current view`;
       }
     }
-    
+
     this.updateQuickActions(context);
   }
 
@@ -530,18 +530,29 @@ class AssistantPanel {
   }
 
   updateQuickActions(context) {
+    console.log('🎨 updateQuickActions called with context:', context);
+
     // Enable/disable quick actions based on context
     this.actionButtons.forEach(btn => {
       const action = btn.dataset.action;
       let enabled = true;
 
       // Enable reply button for both mailbox and viewer contexts
-      if (action === 'reply' && context.type !== 'mailbox' && context.type !== 'viewer') {
-        enabled = false;
+      // Use case-insensitive comparison to handle variations (viewer/Viewer, mailbox/MAIN, etc.)
+      if (action === 'reply') {
+        const contextType = (context.type || '').toLowerCase();
+        console.log(`   Reply button: contextType="${contextType}"`);
+        if (contextType !== 'mailbox' && contextType !== 'viewer') {
+          enabled = false;
+          console.log('   Reply button DISABLED (context not mailbox/viewer)');
+        } else {
+          console.log('   Reply button ENABLED');
+        }
       }
 
       btn.disabled = !enabled;
       btn.style.opacity = enabled ? '1' : '0.5';
+      console.log(`   ${action} button: enabled=${enabled}, disabled=${btn.disabled}, opacity=${btn.style.opacity}`);
     });
   }
 

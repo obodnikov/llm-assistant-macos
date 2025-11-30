@@ -696,8 +696,8 @@ ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
 
         -- Try to detect window type
         set windowType to "unknown"
-        set content to ""
-        set subject to ""
+        set msgContent to ""
+        set msgSubject to ""
 
         -- Check if compose window
         try
@@ -705,9 +705,9 @@ ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
           if (count of msgs) > 0 then
             set windowType to "compose"
             set msg to item 1 of msgs
-            set subject to subject of msg as string
-            set content to content of msg as string
-            return windowType & "|||SEP|||" & subject & "|||SEP|||" & content
+            set msgSubject to subject of msg as string
+            set msgContent to content of msg as string
+            return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent
           end if
         end try
 
@@ -720,10 +720,10 @@ ipcMain.handle('get-mail-window-context', async (event, windowIndex) => {
           if (count of selectedMessages) > 0 then
             set firstMessage to item 1 of selectedMessages
             set windowType to "viewer"
-            set subject to subject of firstMessage as string
-            set content to content of firstMessage as string
-            set sender to sender of firstMessage as string
-            return windowType & "|||SEP|||" & subject & "|||SEP|||" & content & "|||SEP|||" & sender
+            set msgSubject to subject of firstMessage as string
+            set msgContent to content of firstMessage as string
+            set msgSender to sender of firstMessage as string
+            return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent & "|||SEP|||" & msgSender
           end if
         end try
 

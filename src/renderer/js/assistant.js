@@ -101,6 +101,7 @@ class AssistantPanel {
     // Context elements
     this.contextIndicator = document.getElementById('context-indicator');
     this.contextDetails = document.querySelector('.context-details');
+    this.refreshSelectionBtn = document.getElementById('refresh-selection-btn');
 
     // Window selector elements
     this.windowSelector = document.getElementById('window-selector');
@@ -151,6 +152,11 @@ class AssistantPanel {
     }
     if (this.quitBtn) {
       this.quitBtn.addEventListener('click', () => this.quitApp());
+    }
+
+    // Mail context refresh button
+    if (this.refreshSelectionBtn) {
+      this.refreshSelectionBtn.addEventListener('click', () => this.refreshMailSelection());
     }
 
     // Window selector controls
@@ -365,42 +371,10 @@ class AssistantPanel {
   async checkMailContext() {
     try {
       if (window.electronAPI) {
-        // Get all available Mail windows
-        const result = await window.electronAPI.getAllMailWindows();
-        console.log('📧 Mail windows received:', JSON.stringify(result, null, 2));
-
-        if (result.error) {
-          console.log('Mail not available:', result.error);
-          this.hideMailContext();
-          this.hideWindowSelector();
-          return;
-        }
-
-        const windows = result.windows || [];
-
-        if (windows.length === 0) {
-          console.log('No Mail windows found');
-          this.hideMailContext();
-          this.hideWindowSelector();
-          return;
-        }
-
-        this.availableWindows = windows;
-
-        if (windows.length === 1) {
-          // Auto-select the only window
-          console.log('Single window detected, auto-selecting');
-          this.selectedWindowIndex = windows[0].windowIndex;
-          await this.loadWindowContext(this.selectedWindowIndex);
-          this.hideWindowSelector();
-        } else {
-          // Multiple windows - show selector
-          console.log(`Multiple windows detected (${windows.length}), showing selector`);
-          this.showWindowSelector(windows);
-          // Auto-select first window by default
-          this.selectedWindowIndex = windows[0].windowIndex;
-          await this.loadWindowContext(this.selectedWindowIndex);
-        }
+        // Simply get the current Mail selection (no window enumeration needed)
+        await this.loadCurrentSelection();
+        // Always hide window selector since we're not using it anymore
+        this.hideWindowSelector();
       }
     } catch (error) {
       console.log('No mail context available:', error);
@@ -409,9 +383,23 @@ class AssistantPanel {
     }
   }
 
+  async loadCurrentSelection() {
+    try {
+      if (!window.electronAPI) return;
+
+      // Get current selection - no parameters needed
+      const context = await window.electronAPI.getMailWindowContext();
+      console.log('📧 Current selection loaded:', JSON.stringify(context, null, 2));
+      this.updateMailContext(context);
+    } catch (error) {
+      console.error('Failed to load current selection:', error);
+      this.hideMailContext();
+    }
+  }
+
   updateMailContext(context) {
     console.log('📧 Updating mail context:', context);
-    if (!context || !context.type) {
+    if (!context || !context.type || context.type === 'error') {
       console.log('⚠️ No valid context type, hiding mail context');
       this.hideMailContext();
       return;
@@ -421,7 +409,7 @@ class AssistantPanel {
     if (this.contextIndicator) {
       this.contextIndicator.classList.remove('hidden');
     }
-    
+
     if (context.type === 'compose') {
       if (this.contextDetails) {
         this.contextDetails.textContent = 'Composing email';
@@ -429,15 +417,14 @@ class AssistantPanel {
     } else if (context.type === 'viewer') {
       if (this.contextDetails) {
         const subject = context.subject ? `: ${context.subject.substring(0, 40)}...` : '';
-        this.contextDetails.textContent = `Viewing email${subject}`;
+        this.contextDetails.textContent = `Selected email${subject}`;
       }
     } else if (context.type === 'mailbox') {
-      const count = context.messages?.length || 0;
       if (this.contextDetails) {
-        this.contextDetails.textContent = `${count} emails in current view`;
+        this.contextDetails.textContent = 'No email selected';
       }
     }
-    
+
     this.updateQuickActions(context);
   }
 
@@ -495,38 +482,13 @@ class AssistantPanel {
   }
 
   async refreshMailWindows() {
-    console.log('Refreshing Mail windows...');
-    await this.checkMailContext();
+    console.log('Refreshing Mail selection...');
+    await this.loadCurrentSelection();
   }
 
-  async applySelectedWindow() {
-    if (!this.windowDropdown) {
-      console.log('Window dropdown not available');
-      return;
-    }
-
-    const selectedIndex = parseInt(this.windowDropdown.value);
-    if (isNaN(selectedIndex)) {
-      console.log('No valid window selected');
-      return;
-    }
-
-    this.selectedWindowIndex = selectedIndex;
-    console.log('Applying selected window:', this.selectedWindowIndex);
-    await this.loadWindowContext(this.selectedWindowIndex);
-  }
-
-  async loadWindowContext(windowIndex) {
-    try {
-      if (!window.electronAPI) return;
-
-      const context = await window.electronAPI.getMailWindowContext(windowIndex);
-      console.log('📧 Window context loaded:', JSON.stringify(context, null, 2));
-      this.updateMailContext(context);
-    } catch (error) {
-      console.error('Failed to load window context:', error);
-      this.hideMailContext();
-    }
+  async refreshMailSelection() {
+    console.log('🔄 Refreshing Mail selection...');
+    await this.loadCurrentSelection();
   }
 
   updateQuickActions(context) {
@@ -536,8 +498,12 @@ class AssistantPanel {
       let enabled = true;
 
       // Enable reply button for both mailbox and viewer contexts
-      if (action === 'reply' && context.type !== 'mailbox' && context.type !== 'viewer') {
-        enabled = false;
+      // Use case-insensitive comparison to handle variations (viewer/Viewer, mailbox/MAIN, etc.)
+      if (action === 'reply') {
+        const contextType = (context.type || '').toLowerCase();
+        if (contextType !== 'mailbox' && contextType !== 'viewer') {
+          enabled = false;
+        }
       }
 
       btn.disabled = !enabled;

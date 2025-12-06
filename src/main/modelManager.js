@@ -1,15 +1,23 @@
 const fs = require('fs');
 const path = require('path');
-const { app } = require('electron');
 
 class ModelManager {
   constructor() {
     this.configPath = path.join(__dirname, '../../config/models.json');
-    this.userConfigPath = path.join(
-      app.getPath('userData'),
-      'models-override.json'
-    );
+    this._userConfigPath = null; // Lazy-initialized
     this.config = null;
+  }
+
+  get userConfigPath() {
+    if (!this._userConfigPath) {
+      // Lazy-require electron to avoid circular dependency
+      const { app } = require('electron');
+      this._userConfigPath = path.join(
+        app.getPath('userData'),
+        'models-override.json'
+      );
+    }
+    return this._userConfigPath;
   }
 
   /**

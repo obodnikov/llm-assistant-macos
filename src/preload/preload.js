@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Mail integration
   getMailContext: () => ipcRenderer.invoke('get-mail-context'),
+  getAllMailWindows: () => ipcRenderer.invoke('get-all-mail-windows'),
+  getMailWindowContext: (windowIndex) => ipcRenderer.invoke('get-mail-window-context', windowIndex),
   
   // Privacy filtering
   filterSensitiveContent: (text) => ipcRenderer.invoke('filter-sensitive-content', text),

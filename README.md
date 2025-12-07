@@ -2,7 +2,7 @@
 
 AI-powered assistant with **native macOS integration** and **Mail.app support**. Get intelligent help with email composition, text processing, and more using OpenAI's GPT models.
 
-![Version](https://img.shields.io/badge/version-0.4.0-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![macOS](https://img.shields.io/badge/macOS-11.0+-blue)
 ![Node](https://img.shields.io/badge/node-24.9.0-brightgreen)
@@ -373,7 +373,22 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔄 Version History
 
-### v0.4.0 (Current)
+### v1.0.0 (Current)
+- ✅ **Mail Window Selector**
+  - Enumerate all open Mail.app windows (compose, viewer, mailbox)
+  - Dropdown selector when multiple windows exist
+  - Proper window type detection via AppleScript
+  - Auto-select when only one window is open
+- ✅ **UI Improvements**
+  - Enhanced icon button visibility and contrast
+  - Improved hover effects with scale animation
+  - Better active state feedback
+- ✅ **Bug Fixes**
+  - Fixed circular dependency issues in app initialization
+  - Lazy initialization for modelManager and electron-store
+  - Resolved AppleScript output parsing issues
+
+### v0.4.0
 - ✅ **Improved Window Management**
   - Window now appears on current desktop/Space when invoked
   - Stays visible when switching between applications

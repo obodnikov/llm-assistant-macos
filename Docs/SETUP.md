@@ -465,5 +465,5 @@ ls -la build/Release/
 
 ---
 
-**Version**: 0.4.0
-**Last Updated**: 2025-10-20
+**Version**: 1.0.0
+**Last Updated**: 2025-12-07

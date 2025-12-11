@@ -5,29 +5,21 @@
       "enabled": true,
       "models": [
         {
-          "id": "gpt-5",
-          "name": "GPT-5",
-          "description": "Full flagship model, highest quality",
+          "id": "gpt-5.1",
+          "name": "GPT-5.1",
+          "description": "Flagship reasoning model with top accuracy and context length",
           "speed": "medium",
           "quality": "excellent",
           "cost": "high",
           "default": true
         },
         {
-          "id": "gpt-5-mini",
-          "name": "GPT-5 Mini",
-          "description": "Lightweight version, optimized for speed",
+          "id": "gpt-5.1-mini",
+          "name": "GPT-5.1 Mini",
+          "description": "Lightweight high-speed model optimized for latency and cost",
           "speed": "fast",
-          "quality": "excellent",
+          "quality": "very-good",
           "cost": "medium"
-        },
-        {
-          "id": "gpt-5-nano",
-          "name": "GPT-5 Nano",
-          "description": "Most lightweight and cost-effective",
-          "speed": "very-fast",
-          "quality": "good",
-          "cost": "low"
         },
         {
           "id": "gpt-4.1",
@@ -138,5 +130,20 @@
     "defaultProvider": "openai",
     "autoDetectOllama": true,
     "fallbackProvider": "openai"
+  },
+  "apiSettings": {
+    "timeout": 60000,
+    "maxRetries": 3,
+    "retryDelay": 1000,
+    "defaultMaxTokens": 1000,
+    "defaultTemperature": 0.7,
+    "gpt5Settings": {
+      "maxCompletionTokens": 1000,
+      "temperature": 1
+    },
+    "gpt4Settings": {
+      "maxTokens": 1000,
+      "temperature": 0.7
+    }
   }
 }

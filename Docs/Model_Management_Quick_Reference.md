@@ -32,6 +32,22 @@ Your LLM Assistant now has a **configurable model system** that allows adding/re
 
 ## Quick Tasks
 
+### Adjust API Settings (New in v1.1.0)
+
+Override timeout, retries, and token limits:
+
+```json
+{
+  "apiSettings": {
+    "timeout": 90000,
+    "maxRetries": 5,
+    "gpt5Settings": {
+      "maxCompletionTokens": 2000
+    }
+  }
+}
+```
+
 ### Add a Legacy Model (e.g., GPT-4o)
 
 Create or edit `~/Library/Application Support/llm-assistant-macos/models-override.json`:
@@ -202,6 +218,7 @@ The application automatically parses both formats and extracts the model name fo
 ## Configuration Priority
 
 1. **User config** (`models-override.json`) - Highest priority
+   - Overrides models, providers, preferences, **and apiSettings** (v1.1.0+)
 2. **Default config** (`config/models.json`) - Fallback
 3. **Hardcoded fallback** - If both fail
 
@@ -264,6 +281,7 @@ constructor() {
 
 ## Version Info
 
-- **Current**: v1.0.0 with Mail window selector and UI improvements
-- **Model Config**: v1.0
+- **Current**: v1.1.0 with configurable API settings and enhanced error handling
+- **Model Config**: v1.1 (now supports apiSettings override)
 - **Supported Providers**: OpenAI, Anthropic, Perplexity, Ollama
+- **New in v1.1.0**: API settings (timeout, retries, token limits) configurable via models-override.json

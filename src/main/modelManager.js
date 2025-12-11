@@ -80,6 +80,23 @@ class ModelManager {
       };
     }
 
+    // Merge apiSettings (deep merge for nested settings)
+    if (userConfig.apiSettings) {
+      merged.apiSettings = {
+        ...merged.apiSettings,
+        ...userConfig.apiSettings,
+        // Deep merge for nested objects
+        gpt5Settings: {
+          ...(merged.apiSettings?.gpt5Settings || {}),
+          ...(userConfig.apiSettings?.gpt5Settings || {})
+        },
+        gpt4Settings: {
+          ...(merged.apiSettings?.gpt4Settings || {}),
+          ...(userConfig.apiSettings?.gpt4Settings || {})
+        }
+      };
+    }
+
     return merged;
   }
 

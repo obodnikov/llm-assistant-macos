@@ -2,6 +2,8 @@
 
 This guide shows how to integrate the configurable model management system into your existing LLM Assistant codebase.
 
+**Updated for v1.1.0:** Now includes API settings configuration (timeout, retries, token limits, temperature). See the "API Settings" section in the config/models.json structure below.
+
 ## Files to Create
 
 ### 1. Create `config/models.json`

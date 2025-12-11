@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const electron = require('electron');
 const app = electron.app;
 const BrowserWindow = electron.BrowserWindow;
@@ -221,6 +222,7 @@ app.whenReady().then(async () => {
   createMainWindow();
   await initializeNativeModules();
   registerGlobalShortcuts();
+  loadApiSettings(); // Load API settings from config
   initializeOpenAI(); // Initialize OpenAI client
 
   // macOS specific: Re-create window when app icon is clicked
@@ -297,11 +299,45 @@ const sensitivePatterns = {
 
 // Initialize OpenAI client
 let openaiClient = null;
+let apiSettings = null;
+
+// Load API settings from models.json (with models-override.json support)
+function loadApiSettings() {
+  try {
+    // Use modelManager to get merged config (includes override file)
+    const modelsConfig = modelManager.loadConfig();
+    apiSettings = modelsConfig.apiSettings || {
+      timeout: 60000,
+      maxRetries: 3,
+      retryDelay: 1000,
+      defaultMaxTokens: 1000,
+      defaultTemperature: 0.7,
+      gpt5Settings: { maxCompletionTokens: 1000, temperature: 1 },
+      gpt4Settings: { maxTokens: 1000, temperature: 0.7 }
+    };
+    console.log('✅ API settings loaded:', apiSettings);
+  } catch (error) {
+    console.error('⚠️ Failed to load API settings, using defaults:', error.message);
+    apiSettings = {
+      timeout: 60000,
+      maxRetries: 3,
+      retryDelay: 1000,
+      defaultMaxTokens: 1000,
+      defaultTemperature: 0.7,
+      gpt5Settings: { maxCompletionTokens: 1000, temperature: 1 },
+      gpt4Settings: { maxTokens: 1000, temperature: 0.7 }
+    };
+  }
+}
 
 function initializeOpenAI() {
   const apiKey = store.get('openai-api-key');
   if (apiKey) {
-    openaiClient = new OpenAI({ apiKey });
+    openaiClient = new OpenAI({
+      apiKey,
+      timeout: apiSettings?.timeout || 60000,
+      maxRetries: apiSettings?.maxRetries || 3
+    });
   }
 }
 
@@ -467,30 +503,63 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
     }
     
     // GPT-5 models use max_completion_tokens and temperature: 1, GPT-4 and older use max_tokens and support temperature
+    // Use configurable settings from apiSettings
     const isGPT5 = model.startsWith('gpt-5');
     const apiParams = isGPT5
-      ? { max_completion_tokens: 1000, temperature: 1 }
-      : { max_tokens: 1000, temperature: 0.7 };
+      ? {
+          max_completion_tokens: apiSettings?.gpt5Settings?.maxCompletionTokens || 1000,
+          temperature: apiSettings?.gpt5Settings?.temperature || 1
+        }
+      : {
+          max_tokens: apiSettings?.gpt4Settings?.maxTokens || 1000,
+          temperature: apiSettings?.gpt4Settings?.temperature || 0.7
+        };
 
-    const response = await openaiClient.chat.completions.create({
+    // Add timeout wrapper for better error handling
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Request timeout after ${(apiSettings?.timeout || 60000) / 1000} seconds. The AI service is taking too long to respond.`));
+      }, apiSettings?.timeout || 60000);
+    });
+
+    const apiPromise = openaiClient.chat.completions.create({
       model: model,
       messages: messages,
       ...apiParams
     });
+
+    const response = await Promise.race([apiPromise, timeoutPromise]);
     
     return response.choices[0].message.content;
     
   } catch (error) {
     console.error('OpenAI API error:', error);
-    
+
+    // Enhanced error messages with clear user guidance
     if (error.status === 401) {
-      throw new Error('Invalid API key. Please check your OpenAI API key in settings.');
+      throw new Error('Authentication failed: Invalid API key. Please check your OpenAI API key in settings.');
+    } else if (error.status === 403) {
+      throw new Error('Access forbidden: Your API key does not have permission to use this model.');
     } else if (error.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again in a moment.');
-    } else if (error.status === 500) {
-      throw new Error('OpenAI service unavailable. Please try again later.');
+      throw new Error('Rate limit exceeded: Too many requests. Please wait a moment and try again.');
+    } else if (error.status === 500 || error.status === 502 || error.status === 503) {
+      throw new Error('OpenAI service temporarily unavailable. Please try again in a few moments.');
+    } else if (error.status === 504) {
+      throw new Error('Gateway timeout: The request took too long. Try using a smaller input or try again later.');
+    } else if (error.message && error.message.includes('timeout')) {
+      throw new Error(`Request timeout: ${error.message}`);
+    } else if (error.message && error.message.includes('ENOTFOUND')) {
+      throw new Error('Network error: Cannot reach OpenAI servers. Please check your internet connection.');
+    } else if (error.message && error.message.includes('ECONNREFUSED')) {
+      throw new Error('Connection refused: Cannot connect to OpenAI. Please check your internet connection.');
+    } else if (error.code === 'ECONNRESET') {
+      throw new Error('Connection reset: Network connection was interrupted. Please try again.');
+    } else if (error.status === 400) {
+      throw new Error(`Bad request: ${error.message}. Please check your input or try a different model.`);
     } else {
-      throw new Error(`AI processing failed: ${error.message}`);
+      // Generic error with details
+      const errorMsg = error.message || 'Unknown error occurred';
+      throw new Error(`AI processing failed: ${errorMsg}. If this persists, please check your settings and internet connection.`);
     }
   }
 });

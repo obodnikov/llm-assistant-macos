@@ -164,12 +164,65 @@ Each model supports these properties:
 | `default` | No | Default for provider | `true` or `false` |
 | `enabled` | No | Enable/disable model | `true` or `false` (default: true) |
 
+## API Settings Configuration (New in v1.1.0)
+
+You can now override API behavior settings like timeout, retries, token limits, and temperature in your `models-override.json` file.
+
+### Available API Settings
+
+```json
+{
+  "apiSettings": {
+    "timeout": 60000,              // Request timeout in milliseconds (default: 60000)
+    "maxRetries": 3,                // Number of retry attempts (default: 3)
+    "retryDelay": 1000,             // Delay between retries in ms (default: 1000)
+    "defaultMaxTokens": 1000,       // Default token limit (default: 1000)
+    "defaultTemperature": 0.7,      // Default temperature (default: 0.7)
+    "gpt5Settings": {
+      "maxCompletionTokens": 1000,  // GPT-5 specific token parameter
+      "temperature": 1              // GPT-5 requires temperature: 1
+    },
+    "gpt4Settings": {
+      "maxTokens": 1000,            // GPT-4 token parameter
+      "temperature": 0.7            // GPT-4 supports custom temperature
+    }
+  }
+}
+```
+
+### Example: Increase Timeout and Token Limits
+
+```json
+{
+  "apiSettings": {
+    "timeout": 120000,
+    "maxRetries": 5,
+    "gpt5Settings": {
+      "maxCompletionTokens": 2000
+    },
+    "gpt4Settings": {
+      "maxTokens": 1500
+    }
+  }
+}
+```
+
+### When to Adjust These Settings
+
+- **Increase timeout** - For slow internet connections or complex prompts
+- **Increase maxRetries** - For unreliable network connections
+- **Increase token limits** - When you need longer AI responses
+- **Adjust temperature** - For more creative (higher) or consistent (lower) responses
+
+**Note:** Temperature adjustments only apply to GPT-4 and older models. GPT-5 models require `temperature: 1`.
+
 ## Configuration Merging
 
 The user config merges with the default config:
 - User config **overrides** matching entries in default config
 - User config **adds** new entries not in default config
 - Properties not specified in user config use default values
+- **API settings** are deeply merged (can override individual nested properties)
 
 ### Example Merge
 

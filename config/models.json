@@ -5,52 +5,44 @@
       "enabled": true,
       "models": [
         {
-          "id": "gpt-5",
-          "name": "GPT-5",
-          "description": "Full flagship model, highest quality",
+          "id": "gpt-5.1",
+          "name": "GPT-5.1",
+          "description": "Flagship reasoning model with top accuracy and long context",
           "speed": "medium",
           "quality": "excellent",
           "cost": "high",
           "default": true
         },
         {
-          "id": "gpt-5-mini",
-          "name": "GPT-5 Mini",
-          "description": "Lightweight version, optimized for speed",
-          "speed": "fast",
-          "quality": "excellent",
-          "cost": "medium"
-        },
-        {
-          "id": "gpt-5-nano",
-          "name": "GPT-5 Nano",
-          "description": "Most lightweight and cost-effective",
-          "speed": "very-fast",
-          "quality": "good",
-          "cost": "low"
-        },
-        {
-          "id": "gpt-4.1",
-          "name": "GPT-4.1",
-          "description": "Full version, superior reasoning and context",
-          "speed": "medium",
-          "quality": "excellent",
-          "cost": "high"
-        },
-        {
-          "id": "gpt-4.1-mini",
-          "name": "GPT-4.1 Mini",
-          "description": "Simplified version, speed and cost optimized",
+          "id": "gpt-5.1-preview",
+          "name": "GPT-5.1 Preview",
+          "description": "Fast, cost-efficient preview version of GPT-5.1",
           "speed": "fast",
           "quality": "very-good",
           "cost": "medium"
         },
         {
-          "id": "gpt-4.1-nano",
-          "name": "GPT-4.1 Nano",
-          "description": "Micro-model for simple or bulk tasks",
-          "speed": "very-fast",
+          "id": "gpt-4.1",
+          "name": "GPT-4.1",
+          "description": "High-quality balanced model with strong reasoning",
+          "speed": "medium",
+          "quality": "excellent",
+          "cost": "medium"
+        },
+        {
+          "id": "gpt-4.1-mini",
+          "name": "GPT-4.1 Mini",
+          "description": "Fast and inexpensive model for most workloads",
+          "speed": "fast",
           "quality": "good",
+          "cost": "low"
+        },
+        {
+          "id": "gpt-4.1-preview",
+          "name": "GPT-4.1 Preview",
+          "description": "Extremely fast version intended for high-volume tasks",
+          "speed": "very-fast",
+          "quality": "very-good",
           "cost": "low"
         }
       ]
@@ -138,5 +130,20 @@
     "defaultProvider": "openai",
     "autoDetectOllama": true,
     "fallbackProvider": "openai"
+  },
+  "apiSettings": {
+    "timeout": 60000,
+    "maxRetries": 3,
+    "retryDelay": 1000,
+    "defaultMaxTokens": 1000,
+    "defaultTemperature": 0.7,
+    "gpt5Settings": {
+      "maxCompletionTokens": 1000,
+      "temperature": 1
+    },
+    "gpt4Settings": {
+      "maxTokens": 1000,
+      "temperature": 0.7
+    }
   }
 }

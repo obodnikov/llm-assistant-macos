@@ -7,16 +7,16 @@
         {
           "id": "gpt-5.1",
           "name": "GPT-5.1",
-          "description": "Flagship reasoning model with top accuracy and context length",
+          "description": "Flagship reasoning model with top accuracy and long context",
           "speed": "medium",
           "quality": "excellent",
           "cost": "high",
           "default": true
         },
         {
-          "id": "gpt-5.1-mini",
-          "name": "GPT-5.1 Mini",
-          "description": "Lightweight high-speed model optimized for latency and cost",
+          "id": "gpt-5.1-preview",
+          "name": "GPT-5.1 Preview",
+          "description": "Fast, cost-efficient preview version of GPT-5.1",
           "speed": "fast",
           "quality": "very-good",
           "cost": "medium"
@@ -24,25 +24,25 @@
         {
           "id": "gpt-4.1",
           "name": "GPT-4.1",
-          "description": "Full version, superior reasoning and context",
+          "description": "High-quality balanced model with strong reasoning",
           "speed": "medium",
           "quality": "excellent",
-          "cost": "high"
+          "cost": "medium"
         },
         {
           "id": "gpt-4.1-mini",
           "name": "GPT-4.1 Mini",
-          "description": "Simplified version, speed and cost optimized",
+          "description": "Fast and inexpensive model for most workloads",
           "speed": "fast",
-          "quality": "very-good",
-          "cost": "medium"
+          "quality": "good",
+          "cost": "low"
         },
         {
-          "id": "gpt-4.1-nano",
-          "name": "GPT-4.1 Nano",
-          "description": "Micro-model for simple or bulk tasks",
+          "id": "gpt-4.1-preview",
+          "name": "GPT-4.1 Preview",
+          "description": "Extremely fast version intended for high-volume tasks",
           "speed": "very-fast",
-          "quality": "good",
+          "quality": "very-good",
           "cost": "low"
         }
       ]

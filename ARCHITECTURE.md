@@ -214,11 +214,15 @@ No `.env` files — secrets in electron-store, config in JSON files.
 |------|-------|-----------|
 | `AI.md` | Global | Process separation, security, no inline code, ~800 line limit, change tracking |
 | `AI_ELECTRON.md` | Electron stack | Dev vs packaged mode, resource paths, protocol registration, window lifecycle, ESM |
+| `AI_APPLESCRIPT.md` | AppleScript | Variable naming, delimiter output, error handling, window enumeration, Unicode |
+| `AI_NATIVE_MODULES.md` | C++/Obj-C modules | Build targeting, V8 API compat, fallback requirement, permissions |
+| `AI_OpenAI.md` | OpenAI API | Model family detection, GPT-5 vs GPT-4 params, token budgets, error handling |
 | `CLAUDE.md` | AI behavior | Never code before proposing, check docs/chats, ask for approval |
 
-**Note**: `AI_ELECTRON.md` contains rules from multiple Electron projects. Some
-sections (Flask, PyInstaller, CDN ESM) don't apply today but may apply to future
-features. Follow rules matching the code being modified.
+**Notes**:
+- `AI_ELECTRON.md` contains rules from multiple Electron projects. Some sections
+  (Flask, PyInstaller, CDN ESM) don't apply today but may apply to future features.
+- `AI_OpenAI.md` uses Python examples (from sibling project) but rules are universal.
 
 ### Rule Precedence (highest → lowest)
 
@@ -251,7 +255,11 @@ features. Follow rules matching the code being modified.
 
 1. Read `CLAUDE.md` — behavioral contract
 2. Read `AI.md` — global coding rules
-3. Read `AI_ELECTRON.md` — Electron-specific rules
+3. Read stack-specific rules matching your task:
+   - `AI_ELECTRON.md` — Electron packaging, windows, protocols
+   - `AI_APPLESCRIPT.md` — Mail.app automation, osascript
+   - `AI_NATIVE_MODULES.md` — C++/Obj-C builds, V8 API
+   - `AI_OpenAI.md` — API calls, model params, error handling
 4. Check `Docs/chats/` — previous implementation context
 5. Check `change_tracker/` — recent changes and known issues
 6. **Propose solution → get approval → then implement**
@@ -268,7 +276,7 @@ features. Follow rules matching the code being modified.
 | Build config | `package.json` → `build` section |
 | Chat history | `Docs/chats/` |
 | Release history | `change_tracker/Release_v*.md` |
-| Coding rules | `AI.md`, `AI_ELECTRON.md`, `CLAUDE.md` |
+| Coding rules | `AI.md`, `AI_ELECTRON.md`, `AI_APPLESCRIPT.md`, `AI_NATIVE_MODULES.md`, `AI_OpenAI.md`, `CLAUDE.md` |
 | Docs | `Docs/SETUP.md`, `Docs/MODEL_MANAGEMENT.md` |
 
 ### Common Pitfalls (from real bugs)

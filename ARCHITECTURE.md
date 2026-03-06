@@ -217,6 +217,7 @@ No `.env` files — secrets in electron-store, config in JSON files.
 | `AI_APPLESCRIPT.md` | AppleScript | Variable naming, delimiter output, error handling, window enumeration, Unicode |
 | `AI_NATIVE_MODULES.md` | C++/Obj-C modules | Build targeting, V8 API compat, fallback requirement, permissions |
 | `AI_OpenAI.md` | OpenAI API | Model family detection, GPT-5 vs GPT-4 params, token budgets, error handling |
+| `AI_TESTS.md` | Testing | Jest setup, file structure, mocking patterns, rules for writing/running tests |
 | `CLAUDE.md` | AI behavior | Never code before proposing, check docs/chats, ask for approval |
 
 **Notes**:

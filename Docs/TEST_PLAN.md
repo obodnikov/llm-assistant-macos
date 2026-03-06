@@ -85,22 +85,25 @@ Requires mocking: native modules, AppleScript execution, clipboard.
 ### Text size cap
 | Scenario | Expected |
 |----------|----------|
-| Text < 50000 chars | `truncated: false`, full text |
-| Text = 60000 chars | `truncated: true`, text length = 50000, `textLength: 60000` |
+| Text < 50000 chars | `truncated: false`, full text, `originalTextLength === text.length` |
+| Text = 60000 chars | `truncated: true`, `text.length === 50000`, `originalTextLength === 60000` |
 
 ---
 
 ## 3. `captureSelectedText()` AppleScript Fallback
 
 Critical: sentinel-based validation must prevent stale clipboard leaks.
+Clipboard safety: JS owns save/restore via Electron clipboard API. AppleScript only does Cmd+C and read.
 
 | Scenario | Expected |
 |----------|----------|
-| Text selected, Cmd+C succeeds | Returns selected text, original clipboard restored |
-| No text selected, Cmd+C is no-op | Sentinel unchanged, returns `null`, clipboard restored |
-| App blocks Cmd+C (e.g. Terminal) | Sentinel unchanged after retry, returns `null` |
-| First attempt fails, second succeeds | Returns text from second attempt |
-| AppleScript execution fails entirely | Returns `null`, no crash |
+| Text selected, Cmd+C succeeds | Returns selected text, original clipboard restored via JS finally |
+| No text selected, Cmd+C is no-op | Sentinel unchanged, returns `null`, clipboard restored via JS finally |
+| App blocks Cmd+C (e.g. Terminal) | Sentinel unchanged after retry, returns `null`, clipboard restored |
+| First attempt fails, second succeeds | Returns text from second attempt, clipboard restored |
+| AppleScript execution fails entirely | Returns `null`, clipboard restored via JS finally (no sentinel leak) |
+| Automation permission denied mid-script | JS catch runs, finally restores clipboard, no sentinel leak |
+| Native module available and works | AppleScript fallback never runs, clipboard untouched |
 
 ---
 

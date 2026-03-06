@@ -337,35 +337,38 @@ async function captureSelectedText() {
   }
 
   // Standalone AppleScript fallback when native modules not ready
-  // Uses sentinel approach: write unique value to clipboard before Cmd+C,
-  // then verify clipboard changed to confirm copy succeeded
-  const sentinel = `__CAPTURE_SENTINEL_${Date.now()}__`;
+  // Clipboard safety: JS owns save/restore, AppleScript only does Cmd+C and read
+  const crypto = require('crypto');
+  const sentinel = `__CAPTURE_SENTINEL_${crypto.randomUUID()}__`;
+  const originalClipboard = clipboard.readText();
+
   try {
-    // Attempt up to 2 times with increasing delay
     for (let attempt = 0; attempt < 2; attempt++) {
       const delaySeconds = 0.1 + (attempt * 0.15);
-      const script = `
-        set oldClipboard to the clipboard
-        set the clipboard to "${sentinel}"
-        tell application "System Events"
-          keystroke "c" using command down
-        end tell
-        delay ${delaySeconds}
-        set selectedText to the clipboard
-        if selectedText is "${sentinel}" then
-          set the clipboard to oldClipboard
-          return "__CAPTURE_FAILED__"
-        end if
-        set the clipboard to oldClipboard
-        return selectedText
-      `;
-      const result = await executeAppleScript(script);
-      if (result && result.trim() && result !== '__CAPTURE_FAILED__') {
-        return result.trim();
+      try {
+        // Write sentinel from JS so we control clipboard state
+        clipboard.writeText(sentinel);
+
+        const script = `
+          tell application "System Events"
+            keystroke "c" using command down
+          end tell
+          delay ${delaySeconds}
+          return the clipboard
+        `;
+        const result = await executeAppleScript(script);
+
+        // If clipboard still has sentinel, Cmd+C did not work
+        if (result && result.trim() && result.trim() !== sentinel) {
+          return result.trim();
+        }
+      } catch (error) {
+        console.log(`AppleScript selection attempt ${attempt + 1} failed:`, error.message);
       }
     }
-  } catch (error) {
-    console.log('AppleScript text selection fallback failed:', error.message);
+  } finally {
+    // Always restore original clipboard from JS, regardless of success/failure
+    clipboard.writeText(originalClipboard || '');
   }
 
   return null;
@@ -719,7 +722,8 @@ ipcMain.handle('capture-context', async () => {
     subject: null,
     sender: null,
     capturedAt: Date.now(),
-    textLength: 0,
+    // originalTextLength: length of text before any truncation (may differ from text.length)
+    originalTextLength: 0,
     truncated: false
   };
 
@@ -762,7 +766,7 @@ ipcMain.handle('capture-context', async () => {
     }
 
     // Cap text size to prevent excessive processing
-    context.textLength = context.text.length;
+    context.originalTextLength = context.text.length;
     if (context.text.length > MAX_CONTEXT_TEXT_LENGTH) {
       context.text = context.text.substring(0, MAX_CONTEXT_TEXT_LENGTH);
       context.truncated = true;

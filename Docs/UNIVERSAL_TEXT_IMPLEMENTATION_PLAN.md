@@ -136,7 +136,9 @@ Changes:
 
 ---
 
-## 3. Phase 1 — Core Text Capture Engine
+## 3. Phase 1 — Core Text Capture Engine ✅ DONE
+
+**Status:** Implemented and reviewed. Sentinel-based clipboard safety, JS-level restore guarantee.
 
 **Goal:** Add a universal text capture mechanism in the main process that runs when the renderer requests context. This is the foundation everything else builds on.
 
@@ -400,7 +402,9 @@ ipcMain.handle('get-mail-window-context', async (event, windowIndex, windowTitle
 
 ---
 
-## 4. Phase 2 — Source App Context Detection
+## 4. Phase 2 — Source App Context Detection ✅ DONE
+
+**Status:** Implemented and reviewed. Simplified to Mail vs generic with `isMail()` consistency.
 
 **Goal:** Simple helper to determine if the source is Mail or not, and provide appropriate icon/label for the UI. No per-app categories — just Mail vs generic.
 

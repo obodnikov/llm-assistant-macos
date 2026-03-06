@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Universal context capture
   captureContext: () => ipcRenderer.invoke('capture-context'),
 
+  // Apply result back to source application
+  applyToSource: (text, sourceAppName) => ipcRenderer.invoke('apply-to-source', text, sourceAppName),
+
   // Mail integration
   getMailContext: () => ipcRenderer.invoke('get-mail-context'),
   getAllMailWindows: () => ipcRenderer.invoke('get-all-mail-windows'),

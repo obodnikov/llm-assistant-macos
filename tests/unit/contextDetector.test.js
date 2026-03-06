@@ -37,6 +37,22 @@ describe('isMail', () => {
   test('returns false for empty string', () => {
     expect(isMail('')).toBe(false);
   });
+
+  test('returns false for "mail" with different casing ("MAIL")', () => {
+    expect(isMail('MAIL')).toBe(false);
+  });
+
+  test('returns false for partial match ("MailApp")', () => {
+    expect(isMail('MailApp')).toBe(false);
+  });
+
+  test('returns false for "Mail " with trailing space', () => {
+    expect(isMail('Mail ')).toBe(false);
+  });
+
+  test('returns false for number input', () => {
+    expect(isMail(42)).toBe(false);
+  });
 });
 
 // --- getContextIcon ---

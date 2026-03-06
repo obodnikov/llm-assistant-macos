@@ -86,16 +86,16 @@
 
             <!-- Context indicator -->
             <div id="context-indicator" class="context-indicator hidden">
-                <div class="context-icon">📧</div>
+                <div id="context-icon" class="context-icon">📋</div>
                 <div class="context-info">
-                    <div class="context-title">Mail Context Detected</div>
-                    <div class="context-details"></div>
+                    <div id="context-title" class="context-title">Text Captured</div>
+                    <div id="context-details" class="context-details"></div>
                 </div>
-                <button id="refresh-selection-btn" class="icon-btn" title="Refresh selected email">🔄</button>
+                <button id="refresh-context-btn" class="icon-btn" title="Recapture text">🔄</button>
             </div>
 
-            <!-- Window selector (shown when multiple Mail windows detected) -->
-            <div id="window-selector" class="window-selector hidden">
+            <!-- Window selector (Mail-specific, hidden in universal flow) -->
+            <div id="window-selector" class="window-selector hidden" style="display:none">
                 <div class="window-selector-header">
                     <label for="window-dropdown" class="selector-title">Mail window:</label>
                     <button id="refresh-windows-btn" class="icon-btn" title="Refresh window list">🔄</button>
@@ -135,7 +135,7 @@
                 </div>
                 <textarea 
                     id="user-input" 
-                    placeholder="e.g., Help me write a professional response to this email thread..."
+                    placeholder="e.g., Summarize this text, translate to Spanish, improve the writing..."
                     rows="3"
                 ></textarea>
                 

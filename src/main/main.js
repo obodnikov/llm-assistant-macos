@@ -432,6 +432,84 @@ async function captureMailContext() {
   }
 }
 
+// Sanitize app name to prevent AppleScript injection.
+// Valid macOS app names: alphanumeric, spaces, hyphens, dots, underscores,
+// parentheses, apostrophes, ampersands, plus signs, commas.
+// Blocks quotes and backslashes which could enable injection.
+// Returns sanitized name or null if suspicious.
+function sanitizeAppName(appName) {
+  if (!appName || typeof appName !== 'string') return null;
+  const sanitized = appName.replace(/[^a-zA-Z0-9 .\-_(),'&+]/g, '');
+  if (!sanitized || sanitized !== appName) {
+    console.error('sanitizeAppName: rejected suspicious app name:', appName);
+    return null;
+  }
+  return sanitized;
+}
+
+// Check if a specific app is currently running
+async function isAppRunning(appName) {
+  if (!appName || appName === 'Unknown') return false;
+  const safe = sanitizeAppName(appName);
+  if (!safe) return false;
+  try {
+    const script = `
+      tell application "System Events"
+        return (name of processes) contains "${safe}"
+      end tell
+    `;
+    const result = await executeAppleScript(script);
+    return result.trim() === 'true';
+  } catch (error) {
+    return false;
+  }
+}
+
+// Check if a specific app is the frontmost application
+async function isAppFrontmost(appName) {
+  if (!appName) return false;
+  // appName is not interpolated into the script, but validate for defense-in-depth
+  if (!sanitizeAppName(appName)) return false;
+  try {
+    const script = `
+      tell application "System Events"
+        return name of first application process whose frontmost is true
+      end tell
+    `;
+    const result = await executeAppleScript(script);
+    return result.trim() === appName;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Poll until app is frontmost or timeout. Returns true if app came to front.
+// Checks every 300ms, up to maxAttempts times (~2.1s at 7 attempts).
+async function waitForAppFrontmost(appName, maxAttempts = 7) {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    if (await isAppFrontmost(appName)) return true;
+  }
+  return false;
+}
+
+// Activate a specific app by name (for apply-back mechanism)
+async function activateApp(appName) {
+  if (!appName || appName === 'Unknown') return;
+  const safe = sanitizeAppName(appName);
+  if (!safe) return;
+  try {
+    const script = `
+      tell application "${safe}"
+        activate
+      end tell
+    `;
+    await executeAppleScript(script);
+  } catch (error) {
+    console.error('Failed to activate app:', error);
+  }
+}
+
 // Privacy filtering patterns
 const sensitivePatterns = {
   apiKeys: /(?:sk-|pk_|AIza|ya29\.|glpat-|ghp_|xoxb-|xoxp-)[a-zA-Z0-9\-_]{20,}/gi,
@@ -623,15 +701,19 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
       : modelFullId;
 
     // Build system prompt based on context using configurable prompts
-    let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for email and text processing.');
+    let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for text processing.');
 
-    if (context && context.type === 'compose') {
-      const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
-      systemPrompt += ' ' + composeAddition;
-    } else if (context && context.type === 'mailbox') {
-      const mailboxAddition = store.get('prompt-mailbox', 'The user is working with email threads. Help them understand and respond to conversations.');
-      systemPrompt += ' ' + mailboxAddition;
+    // Mail-specific prompt additions - only when source is explicitly Mail
+    if (context && context.source === 'mail') {
+      if (context.type === 'compose') {
+        const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
+        systemPrompt += ' ' + composeAddition;
+      } else if (context.type === 'viewer' || context.type === 'mailbox') {
+        const mailboxAddition = store.get('prompt-mailbox', 'The user is working with email threads. Help them understand and respond to conversations.');
+        systemPrompt += ' ' + mailboxAddition;
+      }
     }
+    // Non-mail sources: base system prompt is sufficient, no additions needed
 
     systemPrompt += ' Keep responses concise and actionable.';
     
@@ -783,6 +865,54 @@ ipcMain.handle('capture-context', async () => {
   context.showDraftReply = shouldShowDraftReply(context);
 
   return context;
+});
+
+// Apply result back to source application
+ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
+  try {
+    // Validate source app is running before attempting activation
+    const appRunning = sourceAppName ? await isAppRunning(sourceAppName) : false;
+
+    // Step 1: Try native text insertion
+    if (nativeModulesReady && nativeModules.accessibility && appRunning) {
+      await activateApp(sourceAppName);
+      // Poll until app is frontmost (up to ~1.5s) instead of fixed delay
+      const isFront = await waitForAppFrontmost(sourceAppName);
+      if (isFront) {
+        const inserted = await nativeModules.accessibility.insertTextAtCursor(text);
+        if (inserted) {
+          return { success: true, method: 'native' };
+        }
+      }
+    }
+
+    // Step 2: Clipboard + paste fallback
+    if (appRunning && sourceAppName) {
+      clipboard.writeText(text);
+      await activateApp(sourceAppName);
+      const isFront = await waitForAppFrontmost(sourceAppName);
+      if (isFront) {
+        const pasteScript = `
+          tell application "System Events"
+            keystroke "v" using command down
+          end tell
+        `;
+        await executeAppleScript(pasteScript);
+        return { success: true, method: 'paste' };
+      }
+      // App did not come to front — fall through to clipboard-only
+    }
+
+    // Step 3: Clipboard only (app not running, not frontmost, or no sourceAppName)
+    clipboard.writeText(text);
+    return { success: true, method: 'clipboard' };
+
+  } catch (error) {
+    console.error('Apply to source failed:', error);
+    // Best-effort: put text on clipboard so user can paste manually
+    clipboard.writeText(text);
+    return { success: false, method: 'clipboard', fallback: true, error: error.message };
+  }
 });
 
 // Mail.app integration

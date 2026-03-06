@@ -247,6 +247,54 @@ No `.env` files — secrets in electron-store, config in JSON files.
 - GPT-5 vs GPT-4 API parameter branching
 - All changes tracked in `change_tracker/Release_vX.Y.Z.md`
 
+### Critical Implementation Lessons (from real bugs)
+
+These are hard-won findings from past debugging sessions documented in `Docs/chats/`.
+Violating any of these will break the app. Treat as mandatory constraints.
+
+1. **Require order in `main.js` is fragile — do NOT reorder.**
+   `modelManager` requires `electron` internally; `electron-store` and
+   `electron-window-state` also require `electron`. The current order works.
+   Previous sessions broke the app multiple times by reordering requires,
+   causing `app` to be `undefined` due to circular dependency. Add new
+   requires at the END of the existing block, never before `electron`.
+
+2. **AppleScript: no apostrophes in comments.**
+   `executeAppleScript()` escapes single quotes via `'` → `'"'"'`. Comments
+   containing apostrophes (e.g. `-- it's a compose window`) get mangled and
+   cause syntax error -2741. Use comment phrasing without apostrophes, or
+   omit comments in AppleScript strings entirely.
+
+3. **AppleScript: variable names must not collide with app properties.**
+   Using `content`, `subject`, `sender` as variable names in Mail.app
+   AppleScript causes silent failures or error -10006. Always prefix:
+   `msgContent`, `msgSubject`, `msgSender`. See `AI_APPLESCRIPT.md`.
+
+4. **Do not rewrite working AppleScript handlers.**
+   The existing `get-mail-window-context` and `get-all-mail-windows` handlers
+   went through extensive debugging (quote escaping, window detection, parsing).
+   When reusing their logic, extract the AppleScript verbatim into a shared
+   function — do not "clean up" or rewrite the scripts.
+
+5. **Native modules have built-in fallbacks — use the wrapper.**
+   `native-modules/index.js` exports manager classes (`TextSelectionManager`,
+   `AccessibilityManager`) that already include AppleScript fallbacks. Use
+   `nativeModules.textSelection.getSelectedText()` and
+   `nativeModules.accessibility.getFrontmostApplication()` instead of writing
+   duplicate fallback logic. Only add a standalone fallback if
+   `nativeModulesReady` is `false`.
+
+6. **No JSON construction inside AppleScript.**
+   Building JSON strings in AppleScript is unreliable (quote escaping, Unicode).
+   Use delimiter-based output (`|||SEP|||`) and parse in JavaScript with
+   `result.split('|||SEP|||')`. See `AI_APPLESCRIPT.md` for the pattern.
+
+7. **`nativeModules` is the JS wrapper, not raw `.node` bindings.**
+   The object imported from `native-modules/index.js` has `.textSelection`,
+   `.accessibility`, `.contextMenu` properties — these are manager class
+   instances with error handling and fallbacks. Do not try to `require()` the
+   `.node` files directly.
+
 ---
 
 ## 9. Quick Start for AI Assistants
@@ -281,7 +329,14 @@ No `.env` files — secrets in electron-store, config in JSON files.
 
 ### Common Pitfalls (from real bugs)
 
-- Don't use `content` as variable name in Mail.app AppleScript
+See Section 8 → "Critical Implementation Lessons" for full details and rationale.
+
+- Don't reorder `require()` statements in `main.js` — circular dependency
+- Don't use apostrophes in AppleScript comments — quote escaping breaks them
+- Don't use `content`/`subject`/`sender` as AppleScript variable names — use `msg` prefix
+- Don't rewrite working AppleScript handlers — extract verbatim into shared functions
+- Don't duplicate native module fallback logic — use the wrapper managers
+- Don't construct JSON inside AppleScript — use `|||SEP|||` delimiters
 - Don't initialize `electron-store` or `modelManager` at module load time
 - GPT-5 requires `max_completion_tokens` + `temperature: 1`
 - Native modules must target Electron headers, not system Node.js

@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI processing
   processWithAI: (text, action, context) => ipcRenderer.invoke('process-ai', text, action, context),
   
+  // Universal context capture
+  captureContext: () => ipcRenderer.invoke('capture-context'),
+
   // Mail integration
   getMailContext: () => ipcRenderer.invoke('get-mail-context'),
   getAllMailWindows: () => ipcRenderer.invoke('get-all-mail-windows'),

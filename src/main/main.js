@@ -12,6 +12,7 @@ const modelManager = require('./modelManager');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');
 const { nativeModules } = require('../../native-modules');
+const { getContextIcon, getContextLabel, shouldShowDraftReply } = require('./contextDetector');
 
 // Initialize config store
 const store = new Store();
@@ -286,6 +287,135 @@ function executeAppleScript(script) {
       }
     });
   });
+}
+
+// --- Universal text capture helpers (Phase 1) ---
+
+async function detectFrontmostApp() {
+  // Use native module wrapper (has built-in AppleScript fallback)
+  if (nativeModulesReady && nativeModules.accessibility) {
+    try {
+      const appInfo = await nativeModules.accessibility.getFrontmostApplication();
+      if (appInfo && appInfo.name) {
+        return { name: appInfo.name, bundleId: appInfo.bundleId || null };
+      }
+    } catch (error) {
+      console.log('Native frontmost app detection failed, using AppleScript fallback');
+    }
+  }
+
+  // Standalone AppleScript fallback when native modules not ready
+  try {
+    const script = `
+      tell application "System Events"
+        set frontApp to first application process whose frontmost is true
+        set appName to name of frontApp
+        set appId to bundle identifier of frontApp
+        return appName & "|||" & appId
+      end tell
+    `;
+    const result = await executeAppleScript(script);
+    const parts = result.split('|||');
+    return { name: parts[0] || 'Unknown', bundleId: parts[1] || null };
+  } catch (error) {
+    console.error('Frontmost app detection failed:', error);
+    return { name: 'Unknown', bundleId: null };
+  }
+}
+
+async function captureSelectedText() {
+  // Use native module wrapper (has built-in AppleScript clipboard-trick fallback)
+  if (nativeModulesReady && nativeModules.textSelection) {
+    try {
+      const selection = await nativeModules.textSelection.getSelectedText();
+      if (selection && selection.text && selection.text.trim()) {
+        return selection.text;
+      }
+    } catch (error) {
+      console.log('Native text selection failed:', error.message);
+    }
+  }
+
+  // Standalone AppleScript fallback when native modules not ready
+  // Copies current selection via Cmd+C, reads clipboard, restores original
+  try {
+    const script = `
+      set oldClipboard to the clipboard
+      tell application "System Events"
+        keystroke "c" using command down
+      end tell
+      delay 0.1
+      set selectedText to the clipboard
+      set the clipboard to oldClipboard
+      return selectedText
+    `;
+    const result = await executeAppleScript(script);
+    if (result && result.trim() && result !== 'oldClipboard') {
+      return result.trim();
+    }
+  } catch (error) {
+    console.log('AppleScript text selection fallback failed:', error.message);
+  }
+
+  return null;
+}
+
+async function captureMailContext() {
+  // Extracted from existing get-mail-window-context handler
+  // AppleScript uses msgContent/msgSubject/msgSender to avoid property name collisions
+  try {
+    const getSelectionScript = `
+      tell application "Mail"
+        set windowType to "unknown"
+        set msgContent to ""
+        set msgSubject to ""
+        set msgSender to ""
+
+        try
+          repeat with w in (every window whose visible is true)
+            try
+              set msgs to every outgoing message of w
+              if (count of msgs) > 0 then
+                set windowType to "compose"
+                set msg to item 1 of msgs
+                set msgSubject to subject of msg as string
+                set msgContent to content of msg as string
+                return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent
+              end if
+            end try
+          end repeat
+        end try
+
+        try
+          set selectedMessages to selection
+          if (count of selectedMessages) > 0 then
+            set firstMessage to item 1 of selectedMessages
+            set windowType to "viewer"
+            set msgSubject to subject of firstMessage as string
+            set msgContent to content of firstMessage as string
+            set msgSender to sender of firstMessage as string
+            return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent & "|||SEP|||" & msgSender
+          end if
+        end try
+
+        return "mailbox|||SEP|||No email selected|||SEP|||"
+      end tell
+    `;
+
+    const result = await executeAppleScript(getSelectionScript);
+    const parts = result.split('|||SEP|||');
+
+    if (parts[0] === 'compose') {
+      return { type: 'compose', subject: parts[1], content: parts[2] };
+    } else if (parts[0] === 'viewer') {
+      return { type: 'viewer', subject: parts[1], content: parts[2], sender: parts[3] };
+    } else {
+      return { type: 'mailbox' };
+    }
+  } catch (error) {
+    console.error('Mail context capture failed:', error);
+    return { type: 'error', error: error.message };
+  }
 }
 
 // Privacy filtering patterns
@@ -564,6 +694,71 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
   }
 });
 
+// Universal context capture
+ipcMain.handle('capture-context', async () => {
+  const context = {
+    source: 'manual',
+    appName: null,
+    appBundleId: null,
+    type: 'manual',
+    text: '',
+    subject: null,
+    sender: null,
+    capturedAt: Date.now(),
+    textLength: 0
+  };
+
+  try {
+    // Step 1: Detect frontmost app
+    const frontApp = await detectFrontmostApp();
+    context.appName = frontApp.name;
+    context.appBundleId = frontApp.bundleId;
+
+    // Step 2: Route based on app - Mail gets rich integration, everything else is generic
+    if (frontApp.name === 'Mail') {
+      const mailContext = await captureMailContext();
+      if (mailContext && mailContext.type !== 'error') {
+        context.source = 'mail';
+        context.type = mailContext.type;
+        context.text = mailContext.content || '';
+        context.subject = mailContext.subject || null;
+        context.sender = mailContext.sender || null;
+      }
+    }
+
+    // Step 3: If no text yet (non-Mail app, or Mail had no content), try generic selection
+    if (!context.text) {
+      const selectedText = await captureSelectedText();
+      if (selectedText) {
+        context.source = context.appName === 'Mail' ? 'mail' : 'app';
+        context.type = 'selection';
+        context.text = selectedText;
+      }
+    }
+
+    // Step 4: If still no text, try clipboard
+    if (!context.text) {
+      const clipboardText = clipboard.readText();
+      if (clipboardText && clipboardText.trim()) {
+        context.source = 'clipboard';
+        context.type = 'clipboard';
+        context.text = clipboardText;
+      }
+    }
+
+    context.textLength = context.text.length;
+  } catch (error) {
+    console.error('Context capture failed:', error);
+  }
+
+  // Enrich with UI helpers from contextDetector
+  context.icon = getContextIcon(context);
+  context.label = getContextLabel(context);
+  context.showDraftReply = shouldShowDraftReply(context);
+
+  return context;
+});
+
 // Mail.app integration
 ipcMain.handle('get-mail-context', async () => {
   // First check if Mail is frontmost
@@ -756,64 +951,9 @@ ipcMain.handle('get-all-mail-windows', async () => {
   }
 });
 
-// Get current Mail selection (simplified - no window-specific context)
+// Get current Mail selection (refactored to use shared captureMailContext)
 ipcMain.handle('get-mail-window-context', async (event, windowIndex, windowTitle) => {
-  try {
-    const getSelectionScript = `
-      tell application "Mail"
-        set windowType to "unknown"
-        set msgContent to ""
-        set msgSubject to ""
-        set msgSender to ""
-
-        -- Check for composer windows first
-        try
-          repeat with w in (every window whose visible is true)
-            try
-              set msgs to every outgoing message of w
-              if (count of msgs) > 0 then
-                set windowType to "compose"
-                set msg to item 1 of msgs
-                set msgSubject to subject of msg as string
-                set msgContent to content of msg as string
-                return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent
-              end if
-            end try
-          end repeat
-        end try
-
-        -- Get currently selected message (global selection)
-        try
-          set selectedMessages to selection
-          if (count of selectedMessages) > 0 then
-            set firstMessage to item 1 of selectedMessages
-            set windowType to "viewer"
-            set msgSubject to subject of firstMessage as string
-            set msgContent to content of firstMessage as string
-            set msgSender to sender of firstMessage as string
-            return windowType & "|||SEP|||" & msgSubject & "|||SEP|||" & msgContent & "|||SEP|||" & msgSender
-          end if
-        end try
-
-        -- No selection - it's a mailbox view
-        return "mailbox|||SEP|||No email selected|||SEP|||"
-      end tell
-    `;
-
-    const result = await executeAppleScript(getSelectionScript);
-    const parts = result.split('|||SEP|||');
-
-    if (parts[0] === 'compose') {
-      return { type: 'compose', subject: parts[1], content: parts[2] };
-    } else if (parts[0] === 'viewer') {
-      return { type: 'viewer', subject: parts[1], content: parts[2], sender: parts[3] };
-    } else {
-      return { type: 'mailbox' };
-    }
-
-  } catch (error) {
-    return { type: 'error', error: `Failed to get Mail selection: ${error.message}` };
-  }
+  return await captureMailContext();
 });
 
 // 8. ADD NEW IPC HANDLERS (at end of file)

@@ -1,8 +1,16 @@
 # Universal Text Processing — Implementation Plan
 
-**Version:** 2.0.0 (target)
+**Version:** 2.0.1 (target)
 **Previous Version:** 1.1.0
 **Goal:** Transform the Mail.app-focused LLM Assistant into a universal text processing tool that works with any selected text or clipboard content from any macOS application, while preserving Mail.app as a premium integration.
+
+**UX Principles (agreed):**
+- One app, one hotkey, one panel — like Spotlight
+- Mail.app = premium integration (rich context, Draft Reply)
+- Everything else = solid generic flow (same actions, same UI)
+- Restraint: no per-app deep integrations beyond Mail unless clear need
+- Apply button works universally — paste result back into any source app
+- Keep existing 4 quick actions; only hide Draft Reply when not Mail
 
 ---
 
@@ -14,10 +22,11 @@
 4. [Phase 2 — Source App Context Detection](#4-phase-2--source-app-context-detection)
 5. [Phase 3 — UI Refactoring](#5-phase-3--ui-refactoring)
 6. [Phase 4 — Apply-Back Mechanism](#6-phase-4--apply-back-mechanism)
-7. [Phase 5 — Settings & Prompts Expansion](#7-phase-5--settings--prompts-expansion)
+7. [Phase 5 — Prompts & Settings Update](#7-phase-5--prompts--settings-update)
 8. [Phase 6 — Documentation & Release](#8-phase-6--documentation--release)
-9. [Cross-Phase Dependencies](#9-cross-phase-dependencies)
-10. [Testing Strategy](#10-testing-strategy)
+9. [Future Feature Phases](#9-future-feature-phases)
+10. [Cross-Phase Dependencies](#10-cross-phase-dependencies)
+11. [Testing Strategy](#11-testing-strategy)
 
 ---
 
@@ -32,7 +41,7 @@
 - Native C++/Obj-C modules: text selection, context menu, accessibility (with AppleScript fallbacks)
 - Privacy filtering (local, before API calls)
 - Model management system with JSON config + user overrides
-- Configurable prompts for quick actions
+- Configurable prompts for quick actions (stored in electron-store, editable in Settings UI)
 
 ### What already supports universal use (no changes needed)
 - `process-ai` IPC handler — completely app-agnostic (takes text + prompt + context)
@@ -45,6 +54,7 @@
 - Privacy filtering engine
 - Model management system
 - Settings storage (electron-store)
+- Action prompts: Summarize, Translate, Improve — already generic, work on any text
 
 ### What is Mail.app-specific (needs refactoring)
 - `checkMailContext()` in assistant.js — called on every panel show
@@ -55,7 +65,7 @@
 - `handleQuickAction()` — prompt generation assumes email content
 - `resetOnShow()` — only refreshes mail context
 - `toggleAssistant()` in main.js — no text capture on show
-- System prompt additions — only compose/mailbox context types
+- System prompt additions — only compose/mailbox context types, checked via `context.type` alone
 
 ### Key files and their roles
 | File | Role | Lines (approx) |
@@ -81,19 +91,18 @@ User presses Cmd+Option+L
         - If frontmost app is Mail.app → use existing Mail AppleScript flow (rich context)
         - If any other app → use generic text capture (selected text or clipboard)
         - If no text found → offer clipboard content or manual input
-    → Step 4: Send captured context to renderer via IPC
-    → Step 5: Show panel, renderer displays context-aware UI
+    → Step 4: Show panel, renderer fetches context via IPC
+    → Step 5: Renderer displays context-aware UI
 ```
 
 ### Context object (new unified format)
 ```javascript
-// Replaces the current mail-only context
 {
   source: 'mail' | 'app' | 'clipboard' | 'manual',
-  appName: 'Mail' | 'Safari' | 'Notes' | 'Slack' | ...,
+  appName: 'Mail' | 'Safari' | 'Notes' | ...,
   appBundleId: 'com.apple.mail' | 'com.apple.Safari' | ...,
   type: 'compose' | 'viewer' | 'mailbox' | 'selection' | 'clipboard' | 'manual',
-  text: '...',                    // The captured text
+  text: '...',
   // Mail-specific fields (only when source === 'mail')
   subject: '...',
   sender: '...',
@@ -103,26 +112,33 @@ User presses Cmd+Option+L
 }
 ```
 
-### Quick actions (new dynamic set)
+### Quick actions (v2.0.1 — minimal change)
 ```
-Always visible:
-  📝 Summarize    — works on any text
-  🌐 Translate    — works on any text
-  ✨ Improve      — works on any text
-  🔧 Fix Grammar  — NEW, works on any text
+Keep existing 4 buttons exactly as they are:
+  📝 Summarize    — always visible, works on any text
+  🌐 Translate    — always visible, works on any text
+  ✨ Improve      — always visible, works on any text
+  ↩️ Draft Reply  — visible only when source === 'mail', hidden otherwise
+```
 
-Contextual (shown based on source):
-  ↩️ Draft Reply  — only for mail (source === 'mail' && type === 'viewer')
-  📏 Make Shorter — NEW, any text
-  📐 Make Longer  — NEW, any text
-  💡 Explain      — NEW, any text
+### Prompt system (v2.0.1 — minimal change)
+```
+Existing prompts in Settings UI stay exactly as they are.
+No new settings fields needed.
+
+Changes:
+1. Base system prompt default updated: "You are a helpful AI assistant for text processing."
+   (was: "...for email and text processing.")
+2. Compose/Mailbox context additions only fire when source === 'mail'
+   (was: checked via context.type alone, which could match non-mail contexts)
+3. Non-mail sources: base system prompt only, no additions
 ```
 
 ---
 
 ## 3. Phase 1 — Core Text Capture Engine
 
-**Goal:** Add a universal text capture mechanism in the main process that runs on every hotkey press, before showing the panel. This is the foundation everything else builds on.
+**Goal:** Add a universal text capture mechanism in the main process that runs when the renderer requests context. This is the foundation everything else builds on.
 
 **Can be implemented independently:** Yes
 **Depends on:** Nothing
@@ -132,8 +148,6 @@ Contextual (shown based on source):
 
 **File:** `src/main/main.js`
 **Location:** Add after the existing `get-selected-text` handler (around line 600)
-
-Create a new IPC handler that orchestrates the full text capture flow:
 
 ```javascript
 ipcMain.handle('capture-context', async () => {
@@ -155,9 +169,8 @@ ipcMain.handle('capture-context', async () => {
     context.appName = frontApp.name;
     context.appBundleId = frontApp.bundleId;
 
-    // Step 2: Route based on app
+    // Step 2: Route based on app — Mail gets rich integration, everything else is generic
     if (frontApp.name === 'Mail') {
-      // Use existing rich Mail.app integration
       const mailContext = await captureMailContext();
       if (mailContext && mailContext.type !== 'error') {
         context.source = 'mail';
@@ -168,11 +181,11 @@ ipcMain.handle('capture-context', async () => {
       }
     }
 
-    // Step 3: If no text yet, try generic text selection
+    // Step 3: If no text yet (non-Mail app, or Mail had no content), try generic selection
     if (!context.text) {
       const selectedText = await captureSelectedText();
       if (selectedText) {
-        context.source = 'app';
+        context.source = context.appName === 'Mail' ? 'mail' : 'app';
         context.type = 'selection';
         context.text = selectedText;
       }
@@ -259,19 +272,11 @@ async function captureSelectedText() {
   try {
     const script = `
       tell application "System Events"
-        -- Save current clipboard
         set oldClipboard to the clipboard
-        
-        -- Copy current selection
         keystroke "c" using command down
         delay 0.1
-        
-        -- Read the new clipboard content
         set selectedText to the clipboard
-        
-        -- Restore original clipboard
         set the clipboard to oldClipboard
-        
         return selectedText
       end tell
     `;
@@ -292,13 +297,10 @@ async function captureSelectedText() {
 **File:** `src/main/main.js`
 **Location:** Add after `captureSelectedText()`
 
-This is a refactored extraction of the existing `get-mail-context` logic into a reusable function:
+Extracted from the existing `get-mail-window-context` IPC handler into a reusable function:
 
 ```javascript
 async function captureMailContext() {
-  // Reuse the existing AppleScript logic from get-mail-window-context handler
-  // Extract the script execution into this function so both the IPC handler
-  // and capture-context can use it
   try {
     const getSelectionScript = `
       tell application "Mail"
@@ -360,50 +362,22 @@ async function captureMailContext() {
 **File:** `src/preload/preload.js`
 **Location:** Add to `electronAPI` object (around line 20)
 
-Add the new IPC channel:
 ```javascript
 // Universal context capture
 captureContext: () => ipcRenderer.invoke('capture-context'),
 ```
 
-### 3.6 Modify `toggleAssistant()` to capture context before showing
+### 3.6 Refactor existing `get-mail-window-context` handler
 
 **File:** `src/main/main.js`
-**Location:** `toggleAssistant()` function (line 145)
 
-Current behavior: shows panel, then renderer calls `checkMailContext()`.
-New behavior: capture context in main process, send to renderer with `window-shown` event.
+Refactor the existing handler to use the new `captureMailContext()` function (avoid code duplication):
 
 ```javascript
-function toggleAssistant() {
-  if (!assistantPanel) {
-    createAssistantPanel();
-    return;
-  }
-
-  if (assistantPanel.isVisible()) {
-    assistantPanel.hide();
-  } else {
-    // Position panel at cursor
-    const { screen } = require('electron');
-    const cursor = screen.getCursorScreenPoint();
-    const display = screen.getDisplayNearestPoint(cursor);
-
-    assistantPanel.setPosition(
-      Math.min(cursor.x + 20, display.bounds.width - 400),
-      Math.min(cursor.y + 20, display.bounds.height - 520)
-    );
-
-    assistantPanel.show();
-    assistantPanel.focus();
-
-    // Notify renderer that window is shown (context will be fetched by renderer)
-    assistantPanel.webContents.send('window-shown');
-  }
-}
+ipcMain.handle('get-mail-window-context', async (event, windowIndex, windowTitle) => {
+  return await captureMailContext();
+});
 ```
-
-Note: The actual context capture happens in the renderer via `captureContext()` call in `resetOnShow()`. This avoids a race condition where the main process captures context before the renderer is ready to receive it.
 
 ### 3.7 Files changed in Phase 1
 
@@ -428,121 +402,56 @@ Note: The actual context capture happens in the renderer via `captureContext()` 
 
 ## 4. Phase 2 — Source App Context Detection
 
-**Goal:** Build an app-awareness layer that identifies the source application and categorizes it for UI and prompt decisions.
+**Goal:** Simple helper to determine if the source is Mail or not, and provide appropriate icon/label for the UI. No per-app categories — just Mail vs generic.
 
-**Can be implemented independently:** Yes (but Phase 1 should be done first for full integration)
-**Depends on:** Phase 1 (uses `detectFrontmostApp()`)
-**Estimated scope:** ~80 lines new code + new file
+**Can be implemented independently:** Yes (but Phase 1 should be done first)
+**Depends on:** Phase 1 (uses context object)
+**Estimated scope:** ~30 lines new code
 
 ### 4.1 New module: `src/main/contextDetector.js`
 
-Create a dedicated module for app categorization logic. This keeps main.js clean and makes the logic testable.
+Minimal module — just Mail detection and UI label/icon helpers:
 
 ```javascript
 /**
- * Context Detector — categorizes source applications for UI and prompt decisions.
- * 
- * App categories determine which quick actions are shown and how prompts are built.
+ * Context Detector — determines if source is Mail (premium) or generic.
+ * Provides icon and label for the UI context indicator.
  */
 
-const APP_CATEGORIES = {
-  email: {
-    apps: ['Mail', 'Outlook', 'Spark', 'Airmail', 'Thunderbird'],
-    bundleIds: ['com.apple.mail', 'com.microsoft.Outlook', 'com.readdle.smartemail.macos'],
-    icon: '📧',
-    label: 'Email',
-    actions: ['summarize', 'translate', 'improve', 'fixGrammar', 'reply']
-  },
-  browser: {
-    apps: ['Safari', 'Google Chrome', 'Firefox', 'Arc', 'Brave Browser', 'Microsoft Edge'],
-    bundleIds: ['com.apple.Safari', 'com.google.Chrome', 'org.mozilla.firefox'],
-    icon: '🌐',
-    label: 'Browser',
-    actions: ['summarize', 'translate', 'improve', 'fixGrammar', 'explain', 'makeShorter', 'makeLonger']
-  },
-  editor: {
-    apps: ['TextEdit', 'Notes', 'Pages', 'Microsoft Word', 'Google Docs'],
-    bundleIds: ['com.apple.TextEdit', 'com.apple.Notes', 'com.apple.iWork.Pages'],
-    icon: '📝',
-    label: 'Document',
-    actions: ['summarize', 'translate', 'improve', 'fixGrammar', 'makeShorter', 'makeLonger']
-  },
-  code: {
-    apps: ['Visual Studio Code', 'Xcode', 'Sublime Text', 'Cursor', 'Kiro', 'Terminal', 'iTerm2', 'Warp'],
-    bundleIds: ['com.microsoft.VSCode', 'com.apple.dt.Xcode'],
-    icon: '💻',
-    label: 'Code',
-    actions: ['summarize', 'improve', 'explain', 'fixGrammar']
-  },
-  messaging: {
-    apps: ['Messages', 'Slack', 'Telegram', 'Discord', 'WhatsApp', 'Microsoft Teams'],
-    bundleIds: ['com.apple.MobileSMS', 'com.tinyspeck.slackmacgap'],
-    icon: '💬',
-    label: 'Messaging',
-    actions: ['summarize', 'translate', 'improve', 'fixGrammar', 'reply']
-  },
-  unknown: {
-    apps: [],
-    bundleIds: [],
-    icon: '📋',
-    label: 'Text',
-    actions: ['summarize', 'translate', 'improve', 'fixGrammar', 'explain', 'makeShorter', 'makeLonger']
-  }
-};
-
-function categorizeApp(appName, bundleId) {
-  for (const [category, config] of Object.entries(APP_CATEGORIES)) {
-    if (category === 'unknown') continue;
-    
-    if (bundleId && config.bundleIds.includes(bundleId)) {
-      return { category, ...config };
-    }
-    if (appName && config.apps.some(name => 
-      appName.toLowerCase().includes(name.toLowerCase())
-    )) {
-      return { category, ...config };
-    }
-  }
-  
-  return { category: 'unknown', ...APP_CATEGORIES.unknown };
-}
-
-function getAvailableActions(context) {
-  if (context.source === 'mail') {
-    return APP_CATEGORIES.email.actions;
-  }
-  
-  const appCategory = categorizeApp(context.appName, context.appBundleId);
-  return appCategory.actions;
+function isMail(appName) {
+  return appName === 'Mail';
 }
 
 function getContextIcon(context) {
+  if (context.source === 'mail') return '📧';
   if (context.source === 'clipboard') return '📎';
   if (context.source === 'manual') return '✏️';
-  if (context.source === 'mail') return '📧';
-  
-  const appCategory = categorizeApp(context.appName, context.appBundleId);
-  return appCategory.icon;
+  return '📋';  // generic app selection
 }
 
 function getContextLabel(context) {
-  if (context.source === 'clipboard') return 'Clipboard';
-  if (context.source === 'manual') return 'Manual input';
   if (context.source === 'mail') {
     if (context.type === 'compose') return 'Composing email';
-    if (context.type === 'viewer') return `Email: ${(context.subject || '').substring(0, 40)}`;
+    if (context.type === 'viewer') {
+      return `Email: ${(context.subject || '').substring(0, 40)}`;
+    }
     return 'Mail';
   }
-  
+  if (context.source === 'clipboard') return 'Clipboard';
+  if (context.source === 'manual') return 'Manual input';
   return `Text from ${context.appName || 'Unknown app'}`;
 }
 
+function shouldShowDraftReply(context) {
+  return context.source === 'mail' && 
+    (context.type === 'viewer' || context.type === 'mailbox');
+}
+
 module.exports = {
-  APP_CATEGORIES,
-  categorizeApp,
-  getAvailableActions,
+  isMail,
   getContextIcon,
-  getContextLabel
+  getContextLabel,
+  shouldShowDraftReply
 };
 ```
 
@@ -550,52 +459,41 @@ module.exports = {
 
 **File:** `src/main/main.js`
 
-Add to the `capture-context` IPC handler (from Phase 1), after building the context object:
+Add to the `capture-context` IPC handler (from Phase 1), before return:
 
 ```javascript
-const { categorizeApp, getAvailableActions, getContextIcon, getContextLabel } = require('./contextDetector');
+const { getContextIcon, getContextLabel, shouldShowDraftReply } = require('./contextDetector');
 
 // ... inside capture-context handler, before return:
-const appCategory = categorizeApp(context.appName, context.appBundleId);
-context.category = appCategory.category;
-context.categoryIcon = getContextIcon(context);
-context.categoryLabel = getContextLabel(context);
-context.availableActions = getAvailableActions(context);
+context.icon = getContextIcon(context);
+context.label = getContextLabel(context);
+context.showDraftReply = shouldShowDraftReply(context);
 ```
 
-### 4.3 Add to preload bridge
-
-**File:** `src/preload/preload.js`
-
-No additional changes needed — the `captureContext` channel from Phase 1 returns the enriched context object.
-
-### 4.4 Files changed in Phase 2
+### 4.3 Files changed in Phase 2
 
 | File | Change Type | What |
 |------|-------------|------|
-| `src/main/contextDetector.js` | New file | App categorization module |
+| `src/main/contextDetector.js` | New file | Simple Mail vs generic detection |
 | `src/main/main.js` | Modify | Import contextDetector, enrich capture-context response |
 
-### 4.5 Testing Phase 2
+### 4.4 Testing Phase 2
 
-1. Trigger from Mail.app → verify `category: 'email'`, `categoryIcon: '📧'`
-2. Trigger from Safari → verify `category: 'browser'`, `categoryIcon: '🌐'`
-3. Trigger from VS Code → verify `category: 'code'`, `categoryIcon: '💻'`
-4. Trigger from Notes → verify `category: 'editor'`, `categoryIcon: '📝'`
-5. Trigger from Slack → verify `category: 'messaging'`, `categoryIcon: '💬'`
-6. Trigger from unknown app → verify `category: 'unknown'`, `categoryIcon: '📋'`
-7. Clipboard fallback → verify `categoryIcon: '📎'`
-8. Verify `availableActions` array matches expected actions per category
+1. Trigger from Mail.app → verify `icon: '📧'`, `showDraftReply: true`
+2. Trigger from Safari → verify `icon: '📋'`, `label: 'Text from Safari'`, `showDraftReply: false`
+3. Trigger from any non-Mail app → verify `icon: '📋'`, `showDraftReply: false`
+4. Clipboard fallback → verify `icon: '📎'`, `label: 'Clipboard'`
+5. No text → verify `icon: '✏️'`, `label: 'Manual input'`
 
 ---
 
 ## 5. Phase 3 — UI Refactoring
 
-**Goal:** Update the renderer (HTML + JS) to use the new universal context system. Replace the Mail-only context indicator with a universal one. Make quick actions dynamic based on source app.
+**Goal:** Update the renderer (HTML + JS) to use the new universal context system. Replace the Mail-only context indicator with a universal one. Keep existing 4 quick action buttons, only hide Draft Reply when not Mail.
 
 **Can be implemented independently:** No
 **Depends on:** Phase 1 (capture-context IPC), Phase 2 (context enrichment)
-**Estimated scope:** ~250 lines modified across HTML, JS, CSS
+**Estimated scope:** ~150 lines modified across HTML, JS, CSS
 
 ### 5.1 Update `assistant.html` — Context indicator
 
@@ -627,68 +525,27 @@ Replace the current mail-specific context indicator (lines ~83-92):
 </div>
 ```
 
-### 5.2 Update `assistant.html` — Quick actions
+### 5.2 Update `assistant.html` — Quick actions stay the same
+
+**No changes to the quick action buttons HTML.** Keep the existing 4 buttons exactly as they are. The Draft Reply button visibility will be controlled by JS only.
+
+### 5.3 Update `assistant.html` — Hide Mail window selector
 
 **File:** `src/renderer/assistant.html`
 
-Replace the static quick actions block (lines ~96-113):
-
-**New:**
-```html
-<div id="quick-actions" class="quick-actions">
-    <!-- Always visible -->
-    <button class="action-btn" data-action="summarize">
-        <span class="action-icon">📝</span>
-        <span class="action-text">Summarize</span>
-    </button>
-    <button class="action-btn" data-action="translate">
-        <span class="action-icon">🌐</span>
-        <span class="action-text">Translate</span>
-    </button>
-    <button class="action-btn" data-action="improve">
-        <span class="action-icon">✨</span>
-        <span class="action-text">Improve</span>
-    </button>
-    <button class="action-btn" data-action="fixGrammar">
-        <span class="action-icon">🔧</span>
-        <span class="action-text">Fix Grammar</span>
-    </button>
-    <!-- Contextual — shown/hidden by JS -->
-    <button class="action-btn contextual-action" data-action="reply" style="display:none;">
-        <span class="action-icon">↩️</span>
-        <span class="action-text">Draft Reply</span>
-    </button>
-    <button class="action-btn contextual-action" data-action="explain" style="display:none;">
-        <span class="action-icon">💡</span>
-        <span class="action-text">Explain</span>
-    </button>
-    <button class="action-btn contextual-action" data-action="makeShorter" style="display:none;">
-        <span class="action-icon">📏</span>
-        <span class="action-text">Shorter</span>
-    </button>
-    <button class="action-btn contextual-action" data-action="makeLonger" style="display:none;">
-        <span class="action-icon">📐</span>
-        <span class="action-text">Longer</span>
-    </button>
-</div>
-```
-
-### 5.3 Update `assistant.html` — Remove Mail window selector
-
-**File:** `src/renderer/assistant.html`
-
-Remove or hide the window selector block (lines ~95-105). It's Mail-specific and won't be needed in the universal flow. Keep the HTML but add `style="display:none"` — it can be shown conditionally when source is Mail and multiple windows exist.
+Add `style="display:none"` to the window selector block (lines ~95-105). It's Mail-specific and not needed in the universal flow. Can be re-enabled later if needed.
 
 ### 5.4 Update `assistant.js` — Replace `checkMailContext()` with `loadContext()`
 
 **File:** `src/renderer/js/assistant.js`
 
-Replace the `checkMailContext()` method (line ~371):
+Replace the `checkMailContext()` method:
 
 ```javascript
 async loadContext() {
   try {
     if (!window.electronAPI || !window.electronAPI.captureContext) {
+      // Fallback: try legacy mail context for backward compat
       this.hideContextIndicator();
       return;
     }
@@ -706,8 +563,6 @@ async loadContext() {
 
 **File:** `src/renderer/js/assistant.js`
 
-Replace `updateMailContext()` (line ~400):
-
 ```javascript
 updateContext(context) {
   if (!context || (!context.text && context.source === 'manual')) {
@@ -723,8 +578,8 @@ updateContext(context) {
   const titleEl = document.getElementById('context-title');
   const detailsEl = document.getElementById('context-details');
 
-  if (iconEl) iconEl.textContent = context.categoryIcon || '📋';
-  if (titleEl) titleEl.textContent = context.categoryLabel || 'Text Captured';
+  if (iconEl) iconEl.textContent = context.icon || '📋';
+  if (titleEl) titleEl.textContent = context.label || 'Text Captured';
   if (detailsEl) {
     const preview = context.text ? context.text.substring(0, 60).trim() + '...' : '';
     detailsEl.textContent = preview;
@@ -734,7 +589,7 @@ updateContext(context) {
     this.contextIndicator.classList.remove('hidden');
   }
 
-  // Update quick actions visibility
+  // Show/hide Draft Reply based on context
   this.updateQuickActions(context);
 }
 
@@ -749,25 +604,21 @@ hideContextIndicator() {
 
 **File:** `src/renderer/js/assistant.js`
 
-Replace `updateQuickActions()` (line ~494):
+Simplified — only controls Draft Reply visibility:
 
 ```javascript
 updateQuickActions(context) {
-  const availableActions = context.availableActions || 
-    ['summarize', 'translate', 'improve', 'fixGrammar'];
+  const hasText = context.text && context.text.trim().length > 0;
 
-  // Show/hide contextual action buttons
   this.actionButtons.forEach(btn => {
     const action = btn.dataset.action;
-    const isContextual = btn.classList.contains('contextual-action');
 
-    if (isContextual) {
-      // Show only if in available actions list
-      btn.style.display = availableActions.includes(action) ? '' : 'none';
+    if (action === 'reply') {
+      // Draft Reply: only visible for Mail contexts
+      btn.style.display = context.showDraftReply ? '' : 'none';
     }
 
-    // Enable all visible buttons (text is available)
-    const hasText = context.text && context.text.trim().length > 0;
+    // Enable/disable based on whether text is available
     btn.disabled = !hasText;
     btn.style.opacity = hasText ? '1' : '0.5';
   });
@@ -778,7 +629,7 @@ updateQuickActions(context) {
 
 **File:** `src/renderer/js/assistant.js`
 
-Update the `handleQuickAction()` method (line ~514) to handle new actions and use universal context:
+Update to use universal context. Same 4 actions, just smarter about where text comes from:
 
 ```javascript
 async handleQuickAction(action) {
@@ -788,7 +639,7 @@ async handleQuickAction(action) {
   let textToProcess = '';
 
   try {
-    // Get text from current context
+    // Get text from current context (universal)
     if (this.currentContext && this.currentContext.text) {
       textToProcess = this.currentContext.text;
     } else if (window.systemAPI) {
@@ -814,28 +665,14 @@ async handleQuickAction(action) {
         prompt = this.settings.promptImprove || 
           'Please improve this text for clarity, tone, and professionalism:';
         break;
-      case 'fixGrammar':
-        prompt = this.settings.promptFixGrammar || 
-          'Please fix grammar, spelling, and punctuation in this text. Keep the original meaning and tone:';
-        break;
       case 'reply':
         if (this.currentContext?.source === 'mail') {
           prompt = 'Based on this email, help me draft a professional reply:';
+          textToProcess = this.currentContext.text || '';
         } else {
-          prompt = 'Help me draft a reply to this message:';
+          prompt = this.settings.promptReply || 
+            'Help me draft a professional email reply to this:';
         }
-        break;
-      case 'explain':
-        prompt = this.settings.promptExplain || 
-          'Please explain this text in simple terms:';
-        break;
-      case 'makeShorter':
-        prompt = this.settings.promptMakeShorter || 
-          'Please make this text shorter while keeping the key information:';
-        break;
-      case 'makeLonger':
-        prompt = this.settings.promptMakeLonger || 
-          'Please expand this text with more detail and explanation:';
         break;
     }
 
@@ -861,27 +698,15 @@ async handleQuickAction(action) {
 
 **File:** `src/renderer/js/assistant.js`
 
-Replace `resetOnShow()` (line ~800):
-
 ```javascript
 resetOnShow() {
-  // Clear all UI state
   this.clearAll();
-
-  // Clear context indicator
   this.hideContextIndicator();
-
-  // Capture fresh context from frontmost app
-  this.loadContext();
-
-  // Clear stored text
+  this.loadContext();  // ← Universal context capture instead of checkMailContext()
   this.storedText = null;
-
-  // Clear results content
   if (this.resultsContent) {
     this.resultsContent.innerHTML = '';
   }
-
   console.log('Assistant state reset on window show');
 }
 ```
@@ -889,8 +714,6 @@ resetOnShow() {
 ### 5.9 Update `assistant.js` — Modify `processRequest()`
 
 **File:** `src/renderer/js/assistant.js`
-
-Update `processRequest()` (line ~644) to use universal context:
 
 ```javascript
 async processRequest() {
@@ -923,106 +746,41 @@ async processRequest() {
 
 ### 5.10 Update `assistant.js` — Modify constructor
 
-**File:** `src/renderer/js/assistant.js`
+Replace `this.checkMailContext()` with `this.loadContext()`.
 
-In the constructor (line ~1), replace `this.checkMailContext()` with `this.loadContext()`:
-
-```javascript
-constructor() {
-  this.currentContext = null;
-  this.isProcessing = false;
-  this.settings = {};
-  this.availableWindows = [];  // Keep for backward compat, may remove later
-  this.selectedWindowIndex = null;
-
-  this.initializeElements();
-  this.bindEvents();
-  this.loadAvailableModels();
-  this.loadSettings();
-  this.updateTheme();
-  this.loadContext();  // ← Changed from checkMailContext()
-
-  this.nativeModulesAvailable = false;
-  this.checkNativeModules();
-
-  this.hideLoadingOverlay();
-}
-```
-
-### 5.11 Update `assistant.js` — Modify `initializeElements()`
-
-**File:** `src/renderer/js/assistant.js`
+### 5.11 Update `assistant.js` — Modify `initializeElements()` and `bindEvents()`
 
 Update element references for renamed IDs:
+- `refresh-selection-btn` → `refresh-context-btn`
+- Add `context-icon`, `context-title`, `context-details` by ID
 
-```javascript
-// In initializeElements(), update:
-this.contextIcon = document.getElementById('context-icon');
-this.contextTitle = document.getElementById('context-title');
-this.contextDetails = document.getElementById('context-details');  // was 'context-details' class
-this.refreshContextBtn = document.getElementById('refresh-context-btn');  // was 'refresh-selection-btn'
-```
+Update refresh button binding to call `this.loadContext()`.
 
-### 5.12 Update `assistant.js` — Modify `bindEvents()`
-
-**File:** `src/renderer/js/assistant.js`
-
-Update the refresh button binding:
-
-```javascript
-// Replace refresh-selection-btn binding with:
-if (this.refreshContextBtn) {
-  this.refreshContextBtn.addEventListener('click', () => this.loadContext());
-}
-```
-
-### 5.13 Update `assistant.css` — Minor adjustments
-
-**File:** `src/renderer/css/assistant.css`
-
-No major CSS changes needed. The existing `.context-indicator`, `.quick-actions`, and `.action-btn` styles work for the universal version. Minor additions:
-
-```css
-/* Contextual action buttons — smooth show/hide */
-.contextual-action {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-/* Text preview in context details */
-.context-details {
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-```
-
-### 5.14 Files changed in Phase 3
+### 5.12 Files changed in Phase 3
 
 | File | Change Type | What |
 |------|-------------|------|
-| `src/renderer/assistant.html` | Modify | Universal context indicator, dynamic quick actions, hide mail selector |
+| `src/renderer/assistant.html` | Modify | Universal context indicator, hide mail window selector |
 | `src/renderer/js/assistant.js` | Modify | Replace mail-specific methods with universal ones |
-| `src/renderer/css/assistant.css` | Modify | Minor additions for contextual actions |
+| `src/renderer/css/assistant.css` | Modify | Minor: text-overflow for context details |
 
-### 5.15 Testing Phase 3
+### 5.13 Testing Phase 3
 
 1. Trigger from Mail.app → verify 📧 icon, "Email: [subject]" label, Draft Reply visible
-2. Trigger from Safari with text selected → verify 🌐 icon, "Text from Safari", no Draft Reply
-3. Trigger from VS Code → verify 💻 icon, "Text from Visual Studio Code", Explain visible
+2. Trigger from Safari with text selected → verify 📋 icon, "Text from Safari", Draft Reply hidden
+3. Trigger from any non-Mail app → verify 📋 icon, Draft Reply hidden, other 3 actions visible
 4. Trigger with clipboard only → verify 📎 icon, "Clipboard" label
 5. Trigger with no text → verify context indicator hidden, actions disabled
 6. Click "Recapture text" button → verify context refreshes
-7. Quick actions: test Summarize, Translate, Improve, Fix Grammar with generic text
-8. Quick actions: test Draft Reply only appears for email/messaging contexts
-9. Verify edit-before-process workflow still works (prompt appears in textarea)
-10. Verify Process button works end-to-end with universal context
+7. Quick actions: test Summarize, Translate, Improve with generic text
+8. Verify edit-before-process workflow still works
+9. Verify Process button works end-to-end with universal context
 
 ---
 
 ## 6. Phase 4 — Apply-Back Mechanism
 
-**Goal:** Implement the "Apply" button to insert AI-generated results back into the source application. This replaces the current placeholder `applyResult()` method.
+**Goal:** Implement the "Apply" button to insert AI-generated results back into the source application. Universal — works with any app, not just Mail.
 
 **Can be implemented independently:** Partially (needs Phase 1 for source app tracking)
 **Depends on:** Phase 1 (context object with appName), Phase 3 (universal context in renderer)
@@ -1030,25 +788,23 @@ No major CSS changes needed. The existing `.context-indicator`, `.quick-actions`
 
 ### 6.1 Strategy
 
-Three-tier approach for applying results:
+Three-tier approach:
 
-1. **Native text insertion** (best) — Use accessibility module's `insertTextAtCursor()` to type text directly into the source app. Requires Accessibility permissions.
-2. **Clipboard + paste simulation** (fallback) — Write result to clipboard, switch to source app, simulate Cmd+V. Works without special permissions but overwrites clipboard.
-3. **Clipboard only** (safe fallback) — Just copy to clipboard and notify user. Always works.
+1. **Native text insertion** (best) — Use accessibility module's `insertTextAtCursor()`. Requires Accessibility permissions.
+2. **Clipboard + paste simulation** (fallback) — Write to clipboard, switch to source app, simulate Cmd+V.
+3. **Clipboard only** (safe fallback) — Copy to clipboard and notify user. Always works.
 
 ### 6.2 New IPC handler: `apply-to-source`
 
 **File:** `src/main/main.js`
-**Location:** Add after `insert-text-at-cursor` handler
 
 ```javascript
 ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
   try {
     // Step 1: Try native text insertion
     if (nativeModulesReady && nativeModules.accessibility) {
-      // Activate the source app first
       await activateApp(sourceAppName);
-      await new Promise(resolve => setTimeout(resolve, 200)); // Wait for app to focus
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       const inserted = await nativeModules.accessibility.insertTextAtCursor(text);
       if (inserted) {
@@ -1062,7 +818,6 @@ ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
       await activateApp(sourceAppName);
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Simulate Cmd+V
       const pasteScript = `
         tell application "System Events"
           keystroke "v" using command down
@@ -1078,7 +833,6 @@ ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
 
   } catch (error) {
     console.error('Apply to source failed:', error);
-    // Always fall back to clipboard
     clipboard.writeText(text);
     return { success: true, method: 'clipboard', error: error.message };
   }
@@ -1088,12 +842,10 @@ ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
 ### 6.3 Helper function: `activateApp()`
 
 **File:** `src/main/main.js`
-**Location:** Add after `captureSelectedText()`
 
 ```javascript
 async function activateApp(appName) {
   if (!appName || appName === 'Unknown') return;
-  
   try {
     const script = `
       tell application "${appName}"
@@ -1120,7 +872,7 @@ applyToSource: (text, sourceAppName) => ipcRenderer.invoke('apply-to-source', te
 
 **File:** `src/renderer/js/assistant.js`
 
-Replace the placeholder `applyResult()` (line ~777):
+Replace the placeholder:
 
 ```javascript
 async applyResult() {
@@ -1133,12 +885,9 @@ async applyResult() {
     const sourceApp = this.currentContext?.appName || null;
     const result = await window.electronAPI.applyToSource(text, sourceApp);
 
-    // Show feedback based on method used
+    // Show feedback
     if (this.applyResultBtn) {
-      let feedback = '✓';
-      if (result.method === 'clipboard') {
-        feedback = '📋'; // Indicate it was copied, not inserted
-      }
+      let feedback = result.method === 'clipboard' ? '📋' : '✓';
       const originalText = this.applyResultBtn.textContent;
       this.applyResultBtn.textContent = feedback;
       setTimeout(() => {
@@ -1146,16 +895,15 @@ async applyResult() {
       }, 1500);
     }
 
-    // If clipboard-only, show notification
+    // Clipboard-only: notify user
     if (result.method === 'clipboard' && window.systemAPI) {
       await window.systemAPI.showNotification(
         'Copied to Clipboard',
-        'Result copied. Paste it into your target app with Cmd+V.'
+        'Result copied. Paste with Cmd+V.'
       );
     }
   } catch (error) {
     console.error('Failed to apply result:', error);
-    // Fallback: just copy
     await this.copyResult();
   }
 }
@@ -1172,256 +920,287 @@ async applyResult() {
 
 ### 6.7 Testing Phase 4
 
-1. Process text from Safari → click Apply → verify text is pasted into Safari
+1. Process text from Safari → click Apply → verify text pasted into Safari
 2. Process text from Notes → click Apply → verify text appears in Notes
-3. Process text from Mail compose → click Apply → verify text inserted in compose window
-4. Test with Accessibility permissions denied → verify clipboard fallback works
-5. Test with unknown source app → verify clipboard-only with notification
+3. Process text from Mail compose → click Apply → verify text inserted
+4. Accessibility permissions denied → verify clipboard fallback with notification
+5. Unknown source app → verify clipboard-only with notification
 6. Verify clipboard content is correct after apply
-7. Verify the assistant panel hides or stays based on user preference after apply
 
 ### 6.8 Known limitations
 
 - Native text insertion requires Accessibility permissions
-- Clipboard + paste overwrites the user's clipboard content
-- Some apps (e.g., Electron apps) may not respond to simulated keystrokes
-- There's a brief visual flash when switching to the source app and back
-- Mail.app compose windows may need special handling (AppleScript `set content`)
+- Clipboard + paste overwrites user's clipboard
+- Some Electron apps may not respond to simulated keystrokes
+- Brief visual flash when switching to source app
+- Mail.app compose may need special AppleScript handling (future improvement)
 
 ---
 
-## 7. Phase 5 — Settings & Prompts Expansion
+## 7. Phase 5 — Prompts & Settings Update
 
-**Goal:** Add settings UI for new quick actions (Fix Grammar, Explain, Make Shorter, Make Longer) and update the system prompt logic to be context-aware beyond just Mail.
+**Goal:** Update the system prompt logic so Mail-specific prompt additions only fire for Mail contexts. Update the base system prompt default. No new settings fields — existing Settings UI stays exactly as it is.
 
-**Can be implemented independently:** Partially (UI works standalone, prompt logic needs Phase 2)
-**Depends on:** Phase 2 (app categories for prompt context), Phase 3 (new action buttons)
-**Estimated scope:** ~100 lines modified
+**Can be implemented independently:** Partially (prompt logic needs Phase 1 context object)
+**Depends on:** Phase 1 (context object with `source` field)
+**Estimated scope:** ~15 lines modified
 
-### 7.1 Update `assistant.html` — Settings panel
+### 7.1 Current prompt system (no changes to Settings UI)
 
-**File:** `src/renderer/assistant.html`
+The Settings UI already has these configurable prompts (stored in electron-store):
+- **System Prompt (Base):** Base personality for all requests
+- **Compose Context Addition:** Appended when composing email
+- **Mailbox Context Addition:** Appended when viewing email threads
+- **Summarize Prompt:** Template for summarize action
+- **Translate Prompt:** Template for translate action
+- **Improve Prompt:** Template for improve action
+- **Reply Prompt:** Template for reply action
 
-Add new prompt settings after the existing ones (inside `.settings-content`):
+All action prompts (Summarize, Translate, Improve) are already generic and work on any text. No changes needed to the Settings UI or to how action prompts are stored/loaded.
 
-```html
-<div style="margin-top: 0.5rem;">
-    <label for="prompt-fix-grammar" style="font-size: 0.9rem;">Fix Grammar Prompt:</label>
-    <input type="text" id="prompt-fix-grammar" 
-           placeholder="Fix grammar, spelling, and punctuation. Keep original meaning and tone:">
-</div>
-
-<div style="margin-top: 0.5rem;">
-    <label for="prompt-explain" style="font-size: 0.9rem;">Explain Prompt:</label>
-    <input type="text" id="prompt-explain" 
-           placeholder="Explain this text in simple terms:">
-</div>
-
-<div style="margin-top: 0.5rem;">
-    <label for="prompt-make-shorter" style="font-size: 0.9rem;">Make Shorter Prompt:</label>
-    <input type="text" id="prompt-make-shorter" 
-           placeholder="Make this text shorter while keeping key information:">
-</div>
-
-<div style="margin-top: 0.5rem;">
-    <label for="prompt-make-longer" style="font-size: 0.9rem;">Make Longer Prompt:</label>
-    <input type="text" id="prompt-make-longer" 
-           placeholder="Expand this text with more detail and explanation:">
-</div>
-```
-
-### 7.2 Update `assistant.js` — `loadSettings()` and `saveSettings()`
-
-**File:** `src/renderer/js/assistant.js`
-
-Add the new prompt keys to `loadSettings()`:
-
-```javascript
-// Add to loadSettings() alongside existing prompt loading:
-this.settings.promptFixGrammar = await window.electronAPI.getConfig('prompt-fix-grammar') || '';
-this.settings.promptExplain = await window.electronAPI.getConfig('prompt-explain') || '';
-this.settings.promptMakeShorter = await window.electronAPI.getConfig('prompt-make-shorter') || '';
-this.settings.promptMakeLonger = await window.electronAPI.getConfig('prompt-make-longer') || '';
-```
-
-Add to `saveSettings()`:
-```javascript
-// Add to saveSettings() alongside existing prompt saving:
-await window.electronAPI.setConfig('prompt-fix-grammar', document.getElementById('prompt-fix-grammar')?.value || '');
-await window.electronAPI.setConfig('prompt-explain', document.getElementById('prompt-explain')?.value || '');
-await window.electronAPI.setConfig('prompt-make-shorter', document.getElementById('prompt-make-shorter')?.value || '');
-await window.electronAPI.setConfig('prompt-make-longer', document.getElementById('prompt-make-longer')?.value || '');
-```
-
-### 7.3 Update `main.js` — Context-aware system prompt
+### 7.2 Update `main.js` — System prompt building
 
 **File:** `src/main/main.js`
+**Location:** `process-ai` handler, system prompt section (around line 480)
 
-Update the system prompt building in the `process-ai` handler (around line 490):
-
-**Current:**
+**Current code:**
 ```javascript
+let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for email and text processing.');
+
 if (context && context.type === 'compose') {
+  const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
   systemPrompt += ' ' + composeAddition;
 } else if (context && context.type === 'mailbox') {
+  const mailboxAddition = store.get('prompt-mailbox', 'The user is working with email threads. Help them understand and respond to conversations.');
   systemPrompt += ' ' + mailboxAddition;
 }
 ```
 
-**New:**
+**New code:**
 ```javascript
-if (context) {
-  if (context.source === 'mail' && context.type === 'compose') {
-    const composeAddition = store.get('prompt-compose', 
-      'The user is composing an email. Provide concise, professional assistance.');
+let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for text processing.');
+
+// Mail-specific prompt additions — only when source is explicitly Mail
+if (context && context.source === 'mail') {
+  if (context.type === 'compose') {
+    const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
     systemPrompt += ' ' + composeAddition;
-  } else if (context.source === 'mail') {
-    const mailboxAddition = store.get('prompt-mailbox', 
-      'The user is working with email threads. Help them understand and respond.');
+  } else if (context.type === 'viewer' || context.type === 'mailbox') {
+    const mailboxAddition = store.get('prompt-mailbox', 'The user is working with email threads. Help them understand and respond to conversations.');
     systemPrompt += ' ' + mailboxAddition;
-  } else if (context.category === 'code') {
-    systemPrompt += ' The user is working with code. Be precise and technical.';
-  } else if (context.category === 'messaging') {
-    systemPrompt += ' The user is working with a chat message. Keep responses conversational.';
   }
-  // For browser, editor, unknown — the base system prompt is sufficient
 }
+// Non-mail sources: base system prompt is sufficient, no additions needed
 ```
+
+**Key changes:**
+1. Default base prompt: `"...for text processing."` instead of `"...for email and text processing."`
+2. Compose/Mailbox additions gated by `context.source === 'mail'` (not just `context.type`)
+3. Non-mail contexts use the base prompt only — it's already generic enough
+
+### 7.3 Note on existing user settings
+
+Users who have already customized their base system prompt will keep their custom value (electron-store preserves it). The new default only applies to fresh installs or if the user resets settings. This is the correct behavior — we don't overwrite user customizations.
 
 ### 7.4 Files changed in Phase 5
 
 | File | Change Type | What |
 |------|-------------|------|
-| `src/renderer/assistant.html` | Modify | Add new prompt settings inputs |
-| `src/renderer/js/assistant.js` | Modify | Load/save new prompt settings |
-| `src/main/main.js` | Modify | Context-aware system prompt building |
+| `src/main/main.js` | Modify | System prompt gating by `context.source`, updated default |
 
 ### 7.5 Testing Phase 5
 
-1. Open Settings → verify new prompt fields appear (Fix Grammar, Explain, Shorter, Longer)
-2. Enter custom prompts → Save → reopen Settings → verify they persist
-3. Process text from a code editor → verify system prompt includes code context
-4. Process text from messaging app → verify conversational context
-5. Process text from Mail → verify existing compose/mailbox prompts still work
-6. Use Fix Grammar action → verify correct prompt is used
-7. Use Explain action → verify correct prompt is used
+1. Process text from Mail compose → verify compose addition is appended to system prompt
+2. Process text from Mail viewer → verify mailbox addition is appended
+3. Process text from Safari → verify only base system prompt, no additions
+4. Process text from clipboard → verify only base system prompt
+5. Fresh install: verify new default "text processing" (not "email and text processing")
+6. Existing install with custom base prompt: verify custom prompt preserved
 
 ---
 
 ## 8. Phase 6 — Documentation & Release
 
-**Goal:** Update all documentation to reflect the universal text processing capability. Update ARCHITECTURE.md, README.md, create release notes.
+**Goal:** Update all documentation to reflect universal text processing. Create release notes.
 
-**Can be implemented independently:** Yes (after all other phases are done)
+**Can be implemented independently:** Yes (after all other phases)
 **Depends on:** All previous phases completed
 **Estimated scope:** Documentation only
 
 ### 8.1 Update `ARCHITECTURE.md`
 
-Key sections to update:
-- Section 2 (High-Level Overview): Update description from "email assistance" to "text processing assistance"
-- Section 2 diagram: Add "Any App" → text selection path (already partially shown)
-- Section 4.1 (Renderer): Document universal context indicator, dynamic quick actions
-- Section 4.2 (Main Process): Document `contextDetector.js`, `capture-context` handler
-- Section 5 (Data Flow): Add "Universal Text Capture Flow" diagram
-- Section 7 (Stability Zones): Update zones for new components
-- Section 3 (Repository Structure): Add `contextDetector.js`
+- Section 2: Update description from "email assistance" to "text processing assistance"
+- Section 2 diagram: Already shows "Any App" path — verify accuracy
+- Section 3: Add `src/main/contextDetector.js` to repo structure
+- Section 4.1: Document universal context indicator, Draft Reply visibility logic
+- Section 4.2: Document `capture-context` handler, `captureMailContext()`, `detectFrontmostApp()`
+- Section 5: Add "Universal Text Capture Flow" diagram
+- Section 7: Add stability zones for new components
 
 ### 8.2 Update `README.md`
 
-Key sections to update:
 - Title/description: "AI-powered assistant for text processing" (not just email)
-- Features section: Add "Universal Text Processing" feature block
-- Usage section: Add "Any App" workflow alongside Mail.app workflow
-- Quick Actions: Document new actions (Fix Grammar, Explain, Shorter, Longer)
-- Keyboard shortcuts: Same (Cmd+Option+L works universally now)
+- Features: Add "Universal Text Processing" section
+- Usage: Add "Any App" workflow alongside Mail.app workflow
 - Roadmap: Mark "Multi-App Support" and "Apply Button" as completed
+- Version badge: 2.0.1
 
-### 8.3 Create `change_tracker/Release_v2.0.0.md`
+### 8.3 Create `change_tracker/Release_v2.0.1.md`
 
-Document all changes across phases with:
-- Overview of the universal text processing feature
-- New files created
-- Modified files with line references
-- New IPC channels
-- New quick actions
-- Breaking changes (if any)
-- Migration notes
+Document:
+- Universal text capture from any app
+- Apply-back mechanism
+- Simplified context detection (Mail vs generic)
+- Updated system prompt defaults
+- New files: `contextDetector.js`
+- Modified files with descriptions
+- No breaking changes (Mail.app flow preserved)
 
-### 8.4 Update `AI.md` or create `AI_UNIVERSAL.md`
-
-Consider adding rules specific to the universal text handling:
-- Context object format must be maintained
-- New quick actions must follow the action registration pattern
-- App categories in `contextDetector.js` should be extended, not replaced
-- AppleScript for app activation must follow existing escaping rules
-
-### 8.5 Files changed in Phase 6
+### 8.4 Files changed in Phase 6
 
 | File | Change Type | What |
 |------|-------------|------|
 | `ARCHITECTURE.md` | Modify | Update for universal architecture |
 | `README.md` | Modify | Update features, usage, roadmap |
-| `change_tracker/Release_v2.0.0.md` | New file | Release notes |
-| `package.json` | Modify | Version bump to 2.0.0 |
+| `change_tracker/Release_v2.0.1.md` | New file | Release notes |
+| `package.json` | Modify | Version bump to 2.0.1 |
 
 ---
 
-## 9. Cross-Phase Dependencies
+## 9. Future Feature Phases
+
+These features were discussed during planning but deferred from v2.0.1 to keep the initial release minimal and focused. They can be implemented in future versions when there's a clear need.
+
+### 9.1 Contextual Quick Actions (v2.1+)
+
+**Concept:** Show/hide additional quick action buttons based on the source app category.
+
+Potential actions:
+- **Fix Grammar** — universal, could replace or complement Improve
+- **Explain** — useful for code and technical text
+- **Make Shorter / Make Longer** — useful for documents
+- **Explain Code** — specific to code editors
+
+**Why deferred:** The "Improve" button already covers grammar fixes. Adding more buttons risks cluttering the panel. Wait for user feedback on what's actually needed.
+
+**Implementation notes:**
+- Add buttons to HTML with `class="contextual-action"` and `style="display:none"`
+- Expand `contextDetector.js` with app categories if needed
+- Add corresponding prompts to Settings UI
+- Follow the same pattern as Draft Reply visibility
+
+### 9.2 Per-Category System Prompts (v2.1+)
+
+**Concept:** Adjust the AI's system prompt based on the source app category (code editor → technical tone, messaging → conversational tone).
+
+**Why deferred:** The base system prompt is generic enough for all contexts. Per-category prompts add complexity without proven benefit. Wait for user feedback.
+
+**Implementation notes:**
+- Add new configurable prompt fields to Settings UI (e.g., "Code Context Addition")
+- Store in electron-store alongside existing prompts
+- Gate in `process-ai` handler by `context.category`
+- Requires expanding `contextDetector.js` with full app categorization
+
+### 9.3 Full App Categorization System (v2.1+)
+
+**Concept:** Expand `contextDetector.js` from simple Mail/generic detection to full categories: email, browser, editor, code, messaging.
+
+**Why deferred:** v2.0.1 only needs to know "is it Mail or not?" Full categorization is infrastructure for features that don't exist yet (contextual actions, per-category prompts).
+
+**Implementation notes:**
+- Add `APP_CATEGORIES` object with app names, bundle IDs, icons, labels
+- Add `categorizeApp(appName, bundleId)` function
+- Return category info in `capture-context` response
+- UI can use category for icon differentiation (💻 for code, 💬 for messaging, etc.)
+
+### 9.4 Deep App Integrations (v2.2+)
+
+**Concept:** Rich integrations with specific apps beyond Mail (e.g., Safari reading mode, Notes structured content, Slack thread context).
+
+**Why deferred:** Contradicts the restraint principle. Each deep integration adds maintenance burden and AppleScript fragility. Only build when there's clear user demand for a specific app.
+
+### 9.5 Conversation History (v2.x)
+
+**Concept:** Save and retrieve previous AI interactions for reference.
+
+**Why deferred:** Already on the roadmap as a separate feature. Not related to universal text processing.
+
+---
+
+## 10. Cross-Phase Dependencies
 
 ```
 Phase 1 (Core Text Capture)
   ↓
-Phase 2 (App Context Detection)  ← can start in parallel with Phase 1
+Phase 2 (Context Detection)     ← can be done in same session as Phase 1
   ↓
-Phase 3 (UI Refactoring)         ← needs Phase 1 + Phase 2
+Phase 3 (UI Refactoring)        ← needs Phase 1 + Phase 2
   ↓
-Phase 4 (Apply-Back)             ← needs Phase 1, benefits from Phase 3
+Phase 4 (Apply-Back)            ← needs Phase 1, benefits from Phase 3
   ↓
-Phase 5 (Settings & Prompts)     ← needs Phase 2 + Phase 3
+Phase 5 (Prompts Update)        ← needs Phase 1 (context.source field)
   ↓
-Phase 6 (Documentation)          ← needs all phases complete
+Phase 6 (Documentation)         ← needs all phases complete
 ```
 
 ### Recommended execution order
-1. Phase 1 → Phase 2 (can be one session, they're closely related)
-2. Phase 3 (separate session — largest UI change)
-3. Phase 4 (separate session — independent feature)
-4. Phase 5 (separate session — settings expansion)
-5. Phase 6 (separate session — docs only)
+1. **Session 1:** Phase 1 + Phase 2 (closely related, ~180 lines total)
+2. **Session 2:** Phase 3 (largest UI change, ~150 lines)
+3. **Session 3:** Phase 4 (independent feature, ~120 lines)
+4. **Session 4:** Phase 5 (minimal, ~15 lines — can combine with Phase 4)
+5. **Session 5:** Phase 6 (docs only)
 
-### What each context window needs to know
+### What each context window needs to read
 
-**Phase 1 session:** Read `src/main/main.js`, `src/preload/preload.js`, `native-modules/index.js`, `AI_APPLESCRIPT.md`
+**Session 1 (Phase 1+2):**
+- This plan: Phase 1 + Phase 2 sections
+- `src/main/main.js` — full file
+- `src/preload/preload.js` — full file
+- `native-modules/index.js` — understand available native APIs
+- `AI_APPLESCRIPT.md` — AppleScript rules (variable naming, error handling)
 
-**Phase 2 session:** Read `src/main/main.js` (after Phase 1 changes), this plan's Phase 2 section
+**Session 2 (Phase 3):**
+- This plan: Phase 3 section
+- `src/renderer/assistant.html` — full file
+- `src/renderer/js/assistant.js` — full file
+- `src/renderer/css/assistant.css` — full file
+- `src/preload/preload.js` — verify `captureContext` exists (from Phase 1)
 
-**Phase 3 session:** Read `src/renderer/assistant.html`, `src/renderer/js/assistant.js`, `src/renderer/css/assistant.css`, `src/preload/preload.js` (after Phase 1), this plan's Phase 3 section
+**Session 3 (Phase 4):**
+- This plan: Phase 4 section
+- `src/main/main.js` — after Phase 1+2 changes
+- `src/renderer/js/assistant.js` — after Phase 3 changes (applyResult method)
+- `src/preload/preload.js` — after Phase 1 changes
+- `native-modules/index.js` — accessibility module APIs
+- `AI_APPLESCRIPT.md` — AppleScript rules for app activation
 
-**Phase 4 session:** Read `src/main/main.js` (after Phase 1), `src/renderer/js/assistant.js` (after Phase 3), `src/preload/preload.js`, `native-modules/index.js`, `AI_APPLESCRIPT.md`
+**Session 4 (Phase 5):**
+- This plan: Phase 5 section
+- `src/main/main.js` — process-ai handler section only
 
-**Phase 5 session:** Read `src/renderer/assistant.html` (after Phase 3), `src/renderer/js/assistant.js` (after Phase 3), `src/main/main.js` (after Phase 1)
-
-**Phase 6 session:** Read `ARCHITECTURE.md`, `README.md`, all changed files from previous phases
+**Session 5 (Phase 6):**
+- This plan: Phase 6 section
+- `ARCHITECTURE.md`, `README.md` — full files
+- All changed files from previous phases (for accurate release notes)
 
 ---
 
-## 10. Testing Strategy
+## 11. Testing Strategy
 
-### Per-phase testing (see each phase section)
+### Per-phase testing
 
-Each phase includes specific test cases. Run them before moving to the next phase.
+See each phase section for specific test cases. Run them before moving to the next phase.
 
 ### Integration testing (after all phases)
 
 | Test | Steps | Expected |
 |------|-------|----------|
-| Mail.app full flow | Select email → Cmd+Opt+L → Summarize → Process → Apply | Email summary inserted |
-| Safari full flow | Select text → Cmd+Opt+L → Translate → Process → Copy | Translation in clipboard |
+| Mail.app full flow | Select email → Cmd+Opt+L → Summarize → Process → Apply | Summary inserted into Mail |
+| Safari full flow | Select text → Cmd+Opt+L → Translate → Process → Apply | Translation pasted into Safari |
 | Notes full flow | Select text → Cmd+Opt+L → Improve → Process → Apply | Improved text in Notes |
-| VS Code full flow | Select code → Cmd+Opt+L → Explain → Process → Copy | Explanation in clipboard |
 | No text flow | No selection → Cmd+Opt+L → type manually → Process | Works with manual input |
 | Clipboard flow | Copy text → deselect → Cmd+Opt+L → Summarize | Uses clipboard content |
+| Draft Reply visibility | Trigger from Mail → Reply visible; from Safari → Reply hidden | Correct visibility |
 | Privacy filter | Select text with API key → Cmd+Opt+L → Process | Key filtered before API |
 | Settings persist | Change prompts → restart app → verify | Prompts preserved |
 | Permissions denied | Revoke Accessibility → test all flows | Fallbacks work |
@@ -1431,10 +1210,11 @@ Each phase includes specific test cases. Run them before moving to the next phas
 
 All existing Mail.app functionality must continue to work:
 - Mail context detection (compose, viewer, mailbox)
-- Window enumeration (multiple Mail windows)
-- Draft Reply action
-- Email-specific prompts
+- Window enumeration (existing `get-all-mail-windows` handler)
+- Draft Reply action with email context
+- Email-specific prompts (compose/mailbox additions)
 - Privacy filtering on email content
+- Existing `get-mail-context` and `get-mail-window-context` IPC handlers (backward compat)
 
 ---
 
@@ -1442,13 +1222,13 @@ All existing Mail.app functionality must continue to work:
 
 | File | Phase(s) | Type |
 |------|----------|------|
-| `src/main/main.js` | 1, 4, 5 | Modify |
+| `src/main/main.js` | 1, 2, 4, 5 | Modify |
 | `src/main/contextDetector.js` | 2 | New |
 | `src/preload/preload.js` | 1, 4 | Modify |
-| `src/renderer/assistant.html` | 3, 5 | Modify |
-| `src/renderer/js/assistant.js` | 3, 5 | Modify |
-| `src/renderer/css/assistant.css` | 3 | Modify |
+| `src/renderer/assistant.html` | 3 | Modify |
+| `src/renderer/js/assistant.js` | 3, 4 | Modify |
+| `src/renderer/css/assistant.css` | 3 | Modify (minor) |
 | `ARCHITECTURE.md` | 6 | Modify |
 | `README.md` | 6 | Modify |
 | `package.json` | 6 | Modify |
-| `change_tracker/Release_v2.0.0.md` | 6 | New |
+| `change_tracker/Release_v2.0.1.md` | 6 | New |

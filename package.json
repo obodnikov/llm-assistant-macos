@@ -108,5 +108,13 @@
       "icon": "assets/icons/icon.icns"
     }
   },
-  "gypfile": true
+  "gypfile": true,
+  "jest": {
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/tests"],
+    "moduleNameMapper": {
+      "^electron$": "<rootDir>/tests/__mocks__/electron.js",
+      "^electron-store$": "<rootDir>/tests/__mocks__/electron-store.js"
+    }
+  }
 }

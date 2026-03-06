@@ -21,6 +21,9 @@ const store = new Store();
 let mainWindow;
 let assistantPanel;
 
+// Last captured context app name — used to validate apply-to-source requests
+let lastCapturedAppName = null;
+
 // 2. ADD AFTER EXISTING VARIABLES
 let nativeModulesReady = false;
 
@@ -703,8 +706,13 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
     // Build system prompt based on context using configurable prompts
     let systemPrompt = store.get('prompt-system', 'You are a helpful AI assistant for text processing.');
 
-    // Mail-specific prompt additions - only when source is explicitly Mail
-    if (context && context.source === 'mail') {
+    // Mail-specific prompt additions - when source is explicitly Mail,
+    // or legacy callers that only set context.type without source
+    const isMailContext = context && (
+      context.source === 'mail' ||
+      (!context.source && context.type && ['compose', 'viewer', 'mailbox'].includes(context.type))
+    );
+    if (isMailContext) {
       if (context.type === 'compose') {
         const composeAddition = store.get('prompt-compose', 'The user is composing an email. Provide concise, professional assistance.');
         systemPrompt += ' ' + composeAddition;
@@ -848,16 +856,21 @@ ipcMain.handle('capture-context', async () => {
     }
 
     // Cap text size to prevent excessive processing
-    context.originalTextLength = context.text.length;
-    if (context.text.length > MAX_CONTEXT_TEXT_LENGTH) {
-      context.text = context.text.substring(0, MAX_CONTEXT_TEXT_LENGTH);
+    // Guard: context.text may be undefined/null if earlier steps threw or returned nothing
+    const safeText = context.text || '';
+    context.originalTextLength = safeText.length;
+    if (safeText.length > MAX_CONTEXT_TEXT_LENGTH) {
+      context.text = safeText.substring(0, MAX_CONTEXT_TEXT_LENGTH);
       context.truncated = true;
     }
     // Backward compat: textLength = post-truncation length
-    context.textLength = context.text.length;
+    context.textLength = (context.text || '').length;
   } catch (error) {
     console.error('Context capture failed:', error);
   }
+
+  // Store last captured app name for apply-to-source validation
+  lastCapturedAppName = context.appName;
 
   // Enrich with UI helpers from contextDetector
   context.icon = getContextIcon(context);
@@ -870,27 +883,46 @@ ipcMain.handle('capture-context', async () => {
 // Apply result back to source application
 ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
   try {
+    // Validate text input
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      clipboard.writeText(text || '');
+      return { success: false, method: 'clipboard', fallback: true, error: 'Empty or invalid text' };
+    }
+
+    // Security: constrain to last captured context app name.
+    // If renderer sends a different name, fall back to clipboard-only.
+    const validatedAppName = (sourceAppName && sourceAppName === lastCapturedAppName)
+      ? sourceAppName
+      : null;
+    if (sourceAppName && sourceAppName !== lastCapturedAppName) {
+      console.warn('apply-to-source: renderer app name does not match last captured context, falling back to clipboard');
+    }
+
     // Validate source app is running before attempting activation
-    const appRunning = sourceAppName ? await isAppRunning(sourceAppName) : false;
+    const appRunning = validatedAppName ? await isAppRunning(validatedAppName) : false;
+
+    // Save clipboard for best-effort restore
+    const previousClipboard = clipboard.readText();
 
     // Step 1: Try native text insertion
     if (nativeModulesReady && nativeModules.accessibility && appRunning) {
-      await activateApp(sourceAppName);
+      await activateApp(validatedAppName);
       // Poll until app is frontmost (up to ~1.5s) instead of fixed delay
-      const isFront = await waitForAppFrontmost(sourceAppName);
+      const isFront = await waitForAppFrontmost(validatedAppName);
       if (isFront) {
         const inserted = await nativeModules.accessibility.insertTextAtCursor(text);
         if (inserted) {
           return { success: true, method: 'native' };
         }
       }
+      console.log('apply-to-source: native insertion failed, falling back to paste');
     }
 
     // Step 2: Clipboard + paste fallback
-    if (appRunning && sourceAppName) {
+    if (appRunning && validatedAppName) {
       clipboard.writeText(text);
-      await activateApp(sourceAppName);
-      const isFront = await waitForAppFrontmost(sourceAppName);
+      await activateApp(validatedAppName);
+      const isFront = await waitForAppFrontmost(validatedAppName);
       if (isFront) {
         const pasteScript = `
           tell application "System Events"
@@ -898,12 +930,15 @@ ipcMain.handle('apply-to-source', async (event, text, sourceAppName) => {
           end tell
         `;
         await executeAppleScript(pasteScript);
+        // Best-effort clipboard restore after a short delay
+        setTimeout(() => { clipboard.writeText(previousClipboard || ''); }, 1500);
         return { success: true, method: 'paste' };
       }
       // App did not come to front — fall through to clipboard-only
+      console.log('apply-to-source: app did not come to front, falling back to clipboard-only');
     }
 
-    // Step 3: Clipboard only (app not running, not frontmost, or no sourceAppName)
+    // Step 3: Clipboard only (app not running, not frontmost, or no validatedAppName)
     clipboard.writeText(text);
     return { success: true, method: 'clipboard' };
 

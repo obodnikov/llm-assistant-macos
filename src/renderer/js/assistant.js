@@ -400,7 +400,9 @@ class AssistantPanel {
     if (this.contextIcon) this.contextIcon.textContent = context.icon || '📋';
     if (this.contextTitle) this.contextTitle.textContent = context.label || 'Text Captured';
     if (this.contextDetails) {
-      const preview = context.text ? context.text.substring(0, 60).trim() + '...' : '';
+      const preview = context.text
+        ? context.text.substring(0, 60).trim() + (context.text.length > 60 ? '...' : '')
+        : '';
       this.contextDetails.textContent = preview;
     }
 

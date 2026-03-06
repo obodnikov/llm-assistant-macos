@@ -1,8 +1,8 @@
 # 🤖 LLM Assistant for macOS
 
-AI-powered assistant with **native macOS integration** and **Mail.app support**. Get intelligent help with email composition, text processing, and more using OpenAI's GPT models.
+AI-powered assistant with **native macOS integration**, **universal text processing**, and **Mail.app premium support**. Get intelligent help with any text from any app using OpenAI's GPT models.
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![macOS](https://img.shields.io/badge/macOS-11.0+-blue)
 ![Node](https://img.shields.io/badge/node-24.9.0-brightgreen)
@@ -16,7 +16,15 @@ AI-powered assistant with **native macOS integration** and **Mail.app support**.
 - **Direct Text Manipulation**: Insert text at cursor position
 - **Window Management**: Access window and application information
 
-### 📧 Mail.app Intelligence
+### 🌐 Universal Text Processing (New in v2.0.1)
+- **Any App Support**: Select text in any macOS app, press `Cmd+Option+L`
+- **Smart Text Capture**: Automatic detection of selected text, clipboard fallback, manual input
+- **Source App Detection**: Knows which app you came from (Safari, Notes, VS Code, etc.)
+- **Apply-Back**: Insert AI results back into the source app with one click
+- **Context-Aware UI**: Dynamic icon and label showing text source
+- **Three-Tier Apply**: Native insertion → clipboard+paste → clipboard-only fallback
+
+### 📧 Mail.app Intelligence (Premium Integration)
 - **Smart Context Detection**: Automatically detects viewing/composing emails
 - **Email Content Extraction**: Reads email content, subject, sender
 - **Quick Actions**: Summarize, translate, improve, draft reply
@@ -94,7 +102,7 @@ When viewing an email in Mail.app:
 - **📝 Summarize** - Extract key points concisely
 - **🌐 Translate** - Translate email content
 - **✨ Improve** - Enhance clarity and tone
-- **💬 Draft Reply** - Generate contextual reply
+- **💬 Draft Reply** - Generate contextual reply (Mail-only)
 
 #### Workflow
 1. Open Mail.app and select an email
@@ -102,7 +110,26 @@ When viewing an email in Mail.app:
 3. Click a quick action (e.g., "Summarize")
 4. Edit prompt if desired
 5. Click "Process"
-6. Assistant window stays visible - press `Cmd+Option+L` again to hide
+6. Click "Apply" to insert result back into Mail
+7. Press `Cmd+Option+L` again to hide
+
+### Any App (Universal)
+
+#### Quick Actions
+From any app (Safari, Notes, VS Code, etc.):
+- **📝 Summarize** - Condense selected text
+- **🌐 Translate** - Translate to/from any language
+- **✨ Improve** - Enhance clarity and professionalism
+
+(Draft Reply is hidden for non-Mail contexts)
+
+#### Workflow
+1. Select text in any macOS application
+2. Press `Cmd+Option+L` — assistant captures your selection automatically
+3. Click a quick action or type a custom prompt
+4. Edit prompt if desired, click "Process"
+5. Click "Apply" to paste result back into the source app
+6. If Apply can't reach the source app, result is copied to clipboard
 
 ### Custom Prompts
 Instead of quick actions, type custom requests:
@@ -236,6 +263,7 @@ llm-assistant-macos/
 ├── src/
 │   ├── main/
 │   │   ├── main.js               # Main process with native integration
+│   │   ├── contextDetector.js    # Mail vs generic detection helpers
 │   │   └── modelManager.js       # Model configuration manager
 │   ├── renderer/
 │   │   ├── assistant.html        # UI
@@ -253,6 +281,10 @@ llm-assistant-macos/
 │   ├── MODEL_MANAGEMENT.md       # Model configuration guide
 │   ├── Model_Management_Implementat_on_Guide.md
 │   └── Model_Management_Quick_Reference.md
+│
+├── tests/                         # Jest unit tests (100 passing)
+│   ├── __mocks__/                 # Shared mocks (electron, electron-store)
+│   └── unit/                      # contextDetector, modelManager, mainHandlers
 │
 └── Docs/
     ├── SETUP.md                  # Detailed setup guide
@@ -345,13 +377,17 @@ See [GitHub Issues](https://github.com/obodnikov/llm-assistant-macos/issues) for
 
 ## 📋 TODO / Roadmap
 
+### Completed in v2.0.1
+- ✅ **Apply Button Implementation**: Insert AI-generated results back into any source application (three-tier fallback)
+- ✅ **Multi-App Support**: Universal text processing from any macOS app (Safari, Notes, VS Code, etc.)
+
 ### Planned Features
-- **Apply Button Implementation**: Direct insertion of AI-generated results back to Mail.app or active application
 - **Enhanced Context Menu Integration**: System-wide right-click actions for text selection
-- **Multi-App Support**: Extend beyond Mail.app to Notes, Messages, and other apps
 - **Conversation History**: Save and retrieve previous AI interactions
 - **Custom Quick Actions**: User-defined quick action templates
 - **Offline Mode**: Local LLM support for privacy-sensitive operations
+- **Per-App Contextual Actions**: App-category-specific quick actions (v2.1+)
+- **Per-Category System Prompts**: Adjust AI tone based on source app type (v2.1+)
 
 ## 📝 License
 
@@ -373,7 +409,34 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔄 Version History
 
-### v1.0.0 (Current)
+### v2.0.1 (Current)
+- ✅ **Universal Text Processing**
+  - Capture selected text from any macOS application via `Cmd+Option+L`
+  - Smart fallback chain: selected text → clipboard → manual input
+  - Source app detection with dynamic context indicator (icon + label)
+  - Mail.app preserved as premium integration (rich context, Draft Reply)
+- ✅ **Apply-Back Mechanism**
+  - Insert AI results back into source app with one click
+  - Three-tier fallback: native insertion → clipboard+paste → clipboard-only
+  - Security: app name sanitization, source validation, clipboard save/restore
+- ✅ **System Prompt Gating**
+  - Mail-specific prompt additions only fire for Mail contexts
+  - Updated default base prompt to "text processing"
+  - Backward-compatible with legacy callers
+- ✅ **Test Coverage**
+  - 100 unit tests across 3 suites (contextDetector, modelManager, mainHandlers)
+
+### v1.1.0
+- ✅ **Configurable API Settings**
+  - Timeout, retries, token limits, temperature in `config/models.json`
+  - GPT-5 vs GPT-4 specific parameter sections
+- ✅ **Enhanced Error Messages**
+  - Specific, actionable messages for all HTTP status codes and network errors
+  - Request timeout wrapper with `Promise.race`
+- ✅ **OpenAI Client Configuration**
+  - Configurable timeout and retry settings from models.json
+
+### v1.0.0
 - ✅ **Mail Window Selector**
   - Enumerate all open Mail.app windows (compose, viewer, mailbox)
   - Dropdown selector when multiple windows exist

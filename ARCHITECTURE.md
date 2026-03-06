@@ -13,10 +13,11 @@ Single source of truth for the **system architecture** of LLM Assistant for macO
 
 ## 2. High-Level System Overview
 
-macOS-only Electron desktop app providing AI-powered email assistance via global
-hotkey (`Cmd+Option+L`). Integrates with Mail.app through AppleScript and native
-C++/Obj-C modules. Single-user, background app (no dock icon), always-on-top
-floating panel, macOS 11.0+, ARM64/x64.
+macOS-only Electron desktop app providing AI-powered text processing assistance via
+global hotkey (`Cmd+Option+L`). Works with any macOS application — captures selected
+text or clipboard content universally. Mail.app is a premium integration with rich
+context (subject, sender, Draft Reply). Single-user, background app (no dock icon),
+always-on-top floating panel, macOS 11.0+, ARM64/x64.
 
 | Layer | Technology |
 |-------|-----------|
@@ -37,7 +38,7 @@ floating panel, macOS 11.0+, ARM64/x64.
 │      │AppleScript  │text sel.      │native    │
 │  ┌───┴─────────────┴───────────────┴───────┐  │
 │  │        Main Process (Node.js)           │  │
-│  │ main.js · modelManager · native-modules │  │
+│  │ main.js · contextDetector · modelMgr   │  │
 │  └──────────────┬──────────────────────────┘  │
 │          IPC (contextBridge)                   │
 │  ┌──────────────┴──────────────────────────┐  │
@@ -58,13 +59,14 @@ floating panel, macOS 11.0+, ARM64/x64.
 ```
 llm-assistant-macos/
 ├── src/
-│   ├── main/main.js             # Entry point, IPC, Mail.app integration
+│   ├── main/main.js             # Entry point, IPC, text capture, apply-back
+│   ├── main/contextDetector.js  # Mail vs generic detection, icon/label helpers
 │   ├── main/modelManager.js     # Model config loading, merging, CRUD
 │   ├── preload/preload.js       # contextBridge (electronAPI, systemAPI, nativeModulesAPI)
 │   └── renderer/
-│       ├── assistant.html       # Panel markup
+│       ├── assistant.html       # Panel markup (universal context indicator)
 │       ├── css/assistant.css    # macOS-native styling
-│       └── js/assistant.js      # UI logic, window selector, quick actions
+│       └── js/assistant.js      # UI logic, universal context, quick actions
 ├── native-modules/
 │   ├── index.js                 # JS wrapper with fallback logic
 │   ├── text-selection/          # Global text selection monitoring
@@ -78,7 +80,10 @@ llm-assistant-macos/
 ├── AI.md                        # Global AI coding rules
 ├── AI_ELECTRON.md               # Electron stack-specific rules
 ├── CLAUDE.md                    # AI behavioral contract
-└── package.json                 # v1.1.0, entry: src/main/main.js
+├── tests/                       # Jest unit tests (100 passing)
+│   ├── __mocks__/               # Shared mocks (electron, electron-store)
+│   └── unit/                    # contextDetector, modelManager, mainHandlers
+└── package.json                 # v2.0.1, entry: src/main/main.js
 ```
 
 **Critical paths**: entry → `src/main/main.js`, IPC bridge → `src/preload/preload.js`,
@@ -92,16 +97,20 @@ native build → `binding.gyp` → `build/Release/*.node`
 
 ### 4.1 Renderer (UI)
 
-Single floating panel (`assistant.html`): mail context indicator + window selector
-dropdown, quick actions (Summarize/Translate/Improve/Draft Reply), editable prompt
-with "edit-before-process" workflow, results display, settings panel. No framework —
-vanilla HTML/CSS/JS with macOS vibrancy + system fonts.
+Single floating panel (`assistant.html`): universal context indicator (dynamic icon
+and label based on source app), quick actions (Summarize/Translate/Improve always
+visible; Draft Reply only for Mail), editable prompt with "edit-before-process"
+workflow, results display with Apply button, settings panel. No framework — vanilla
+HTML/CSS/JS with macOS vibrancy + system fonts.
 
 ### 4.2 Main Process
 
 Window management (always-on-top, all Spaces), global shortcut, OpenAI API calls
-(timeout/retry via `process-ai` handler), Mail.app AppleScript integration
-(`get-mail-context`, `get-all-mail-windows`), local privacy filtering (regex),
+(timeout/retry via `process-ai` handler), universal text capture (`capture-context`
+handler orchestrates app detection → text selection → clipboard fallback),
+Mail.app AppleScript integration (`captureMailContext()`, `get-all-mail-windows`),
+apply-back mechanism (`apply-to-source` handler with native/paste/clipboard tiers),
+local privacy filtering (regex), context detection via `contextDetector.js`,
 model config via `modelManager.js` (singleton), native module lifecycle,
 persistent settings via `electron-store`.
 
@@ -154,6 +163,29 @@ Cmd+Option+L → get-all-mail-windows (AppleScript enumerates visible windows)
 **Known gotcha**: AppleScript variable names must not collide with Mail.app
 property names (use `msgContent` not `content` — caused error -10006).
 
+### Universal Text Capture Flow (v2.0.1)
+```
+Cmd+Option+L → renderer calls captureContext() via IPC
+  → Step 1: detectFrontmostApp() (native module or AppleScript)
+  → Step 2: Route by app:
+      Mail.app → captureMailContext() (rich: compose/viewer/mailbox)
+      Any other → captureSelectedText() (native or Cmd+C trick)
+  → Step 3: If no text → clipboard.readText() fallback
+  → Step 4: If still nothing → source: 'manual', empty text
+  → Step 5: Enrich via contextDetector (icon, label, showDraftReply)
+  → Return unified context object to renderer
+```
+
+### Apply-Back Flow (v2.0.1)
+```
+User clicks Apply → renderer calls applyToSource(text, appName) via IPC
+  → Validate: sanitizeAppName(), isAppRunning(), lastCapturedAppName match
+  → Tier 1: Native insertTextAtCursor() (requires Accessibility)
+  → Tier 2: clipboard + activateApp() + waitForAppFrontmost() + Cmd+V
+  → Tier 3: clipboard.writeText() + notification (always works)
+  → Return { success, method, fallback } to renderer for UI feedback
+```
+
 ### Configuration Loading
 ```
 Startup → modelManager.loadConfig()
@@ -192,15 +224,19 @@ No `.env` files — secrets in electron-store, config in JSON files.
 | Preload bridge (contextBridge) | ✅ Stable | Security boundary |
 | Privacy filtering (regex) | ✅ Stable | Local-only |
 | Model config system (merge) | ✅ Stable | Deep merge with overrides |
-| Assistant UI (HTML/CSS/JS) | 🔄 Semi-Stable | UI tweaks expected |
+| Context detector (contextDetector.js) | ✅ Stable | Pure functions, 30 unit tests |
+| Universal text capture (capture-context) | ✅ Stable | v2.0.1, multi-tier fallback |
+| System prompt gating (source-based) | ✅ Stable | v2.0.1, backward-compatible |
+| Assistant UI (HTML/CSS/JS) | 🔄 Semi-Stable | Universal context indicator |
 | Mail.app AppleScript | 🔄 Semi-Stable | Fragile (AppleScript quirks) |
-| Window selector | 🔄 Semi-Stable | v1.0.0, may evolve |
+| Window selector | 🔄 Semi-Stable | v1.0.0, hidden in universal flow |
+| Apply-back mechanism | 🔄 Semi-Stable | v2.0.1, three-tier fallback |
 | Native modules (C++/Obj-C) | ⚠️ Experimental | Rebuild on Electron upgrades |
 | Context menu integration | ⚠️ Experimental | Limited adoption |
 | Multi-provider (Anthropic, Ollama) | 🔮 Planned | Config exists, routing not built |
-| Apply button (insert to Mail) | 🔮 Planned | Roadmap item |
 | Conversation history | 🔮 Planned | No persistence yet |
 | Local LLM (Ollama) | 🔮 Planned | Config placeholder only |
+| Per-app contextual actions | 🔮 Planned | v2.1+ (see implementation plan) |
 
 ---
 
@@ -296,6 +332,18 @@ Violating any of these will break the app. Treat as mandatory constraints.
    instances with error handling and fallbacks. Do not try to `require()` the
    `.node` files directly.
 
+8. **Sanitize app names before AppleScript interpolation.**
+   `activateApp()`, `isAppRunning()`, and `isAppFrontmost()` interpolate app
+   names into AppleScript strings. Use `sanitizeAppName()` (allowlist regex:
+   `[a-zA-Z0-9 .\-_(),'&+]`) before any interpolation. Reject mismatches
+   entirely — do not attempt to "fix" invalid names. Added in v2.0.1 to
+   prevent AppleScript injection via renderer-supplied app names.
+
+9. **Validate apply-to-source requests against last captured context.**
+   `lastCapturedAppName` is set during `capture-context` and checked in
+   `apply-to-source`. This prevents the renderer from requesting activation
+   of arbitrary apps. Mismatches fall back to clipboard-only.
+
 ---
 
 ## 9. Quick Start for AI Assistants
@@ -320,9 +368,11 @@ Violating any of these will break the app. Treat as mandatory constraints.
 | App startup | `src/main/main.js` → `app.whenReady()` |
 | IPC channels | `src/preload/preload.js` |
 | UI markup + logic | `src/renderer/` |
+| Context detection | `src/main/contextDetector.js` |
 | Model config | `config/models.json` + `src/main/modelManager.js` |
 | Native modules | `native-modules/index.js` + `binding.gyp` |
 | Build config | `package.json` → `build` section |
+| Unit tests | `tests/unit/` (Jest, 100 tests) |
 | Chat history | `Docs/chats/` |
 | Release history | `change_tracker/Release_v*.md` |
 | Coding rules | `AI.md`, `AI_ELECTRON.md`, `AI_APPLESCRIPT.md`, `AI_NATIVE_MODULES.md`, `AI_OpenAI.md`, `CLAUDE.md` |
@@ -342,3 +392,5 @@ See Section 8 → "Critical Implementation Lessons" for full details and rationa
 - GPT-5 requires `max_completion_tokens` + `temperature: 1`
 - Native modules must target Electron headers, not system Node.js
 - Ask user which version before updating `change_tracker/`
+- Always use `sanitizeAppName()` before interpolating app names into AppleScript
+- Validate `apply-to-source` app name against `lastCapturedAppName`

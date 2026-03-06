@@ -12,7 +12,7 @@ const modelManager = require('./modelManager');
 const Store = require('electron-store');
 const windowStateKeeper = require('electron-window-state');
 const { nativeModules } = require('../../native-modules');
-const { getContextIcon, getContextLabel, shouldShowDraftReply } = require('./contextDetector');
+const { getContextIcon, getContextLabel, shouldShowDraftReply, isMail } = require('./contextDetector');
 
 // Initialize config store
 const store = new Store();
@@ -337,21 +337,32 @@ async function captureSelectedText() {
   }
 
   // Standalone AppleScript fallback when native modules not ready
-  // Copies current selection via Cmd+C, reads clipboard, restores original
+  // Uses sentinel approach: write unique value to clipboard before Cmd+C,
+  // then verify clipboard changed to confirm copy succeeded
+  const sentinel = `__CAPTURE_SENTINEL_${Date.now()}__`;
   try {
-    const script = `
-      set oldClipboard to the clipboard
-      tell application "System Events"
-        keystroke "c" using command down
-      end tell
-      delay 0.1
-      set selectedText to the clipboard
-      set the clipboard to oldClipboard
-      return selectedText
-    `;
-    const result = await executeAppleScript(script);
-    if (result && result.trim() && result !== 'oldClipboard') {
-      return result.trim();
+    // Attempt up to 2 times with increasing delay
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const delaySeconds = 0.1 + (attempt * 0.15);
+      const script = `
+        set oldClipboard to the clipboard
+        set the clipboard to "${sentinel}"
+        tell application "System Events"
+          keystroke "c" using command down
+        end tell
+        delay ${delaySeconds}
+        set selectedText to the clipboard
+        if selectedText is "${sentinel}" then
+          set the clipboard to oldClipboard
+          return "__CAPTURE_FAILED__"
+        end if
+        set the clipboard to oldClipboard
+        return selectedText
+      `;
+      const result = await executeAppleScript(script);
+      if (result && result.trim() && result !== '__CAPTURE_FAILED__') {
+        return result.trim();
+      }
     }
   } catch (error) {
     console.log('AppleScript text selection fallback failed:', error.message);
@@ -694,6 +705,9 @@ ipcMain.handle('process-ai', async (event, text, prompt, context) => {
   }
 });
 
+// Maximum text size to prevent excessive downstream processing
+const MAX_CONTEXT_TEXT_LENGTH = 50000;
+
 // Universal context capture
 ipcMain.handle('capture-context', async () => {
   const context = {
@@ -705,7 +719,8 @@ ipcMain.handle('capture-context', async () => {
     subject: null,
     sender: null,
     capturedAt: Date.now(),
-    textLength: 0
+    textLength: 0,
+    truncated: false
   };
 
   try {
@@ -715,7 +730,7 @@ ipcMain.handle('capture-context', async () => {
     context.appBundleId = frontApp.bundleId;
 
     // Step 2: Route based on app - Mail gets rich integration, everything else is generic
-    if (frontApp.name === 'Mail') {
+    if (isMail(frontApp.name)) {
       const mailContext = await captureMailContext();
       if (mailContext && mailContext.type !== 'error') {
         context.source = 'mail';
@@ -730,7 +745,7 @@ ipcMain.handle('capture-context', async () => {
     if (!context.text) {
       const selectedText = await captureSelectedText();
       if (selectedText) {
-        context.source = context.appName === 'Mail' ? 'mail' : 'app';
+        context.source = isMail(context.appName) ? 'mail' : 'app';
         context.type = 'selection';
         context.text = selectedText;
       }
@@ -746,7 +761,12 @@ ipcMain.handle('capture-context', async () => {
       }
     }
 
+    // Cap text size to prevent excessive processing
     context.textLength = context.text.length;
+    if (context.text.length > MAX_CONTEXT_TEXT_LENGTH) {
+      context.text = context.text.substring(0, MAX_CONTEXT_TEXT_LENGTH);
+      context.truncated = true;
+    }
   } catch (error) {
     console.error('Context capture failed:', error);
   }
@@ -952,6 +972,7 @@ ipcMain.handle('get-all-mail-windows', async () => {
 });
 
 // Get current Mail selection (refactored to use shared captureMailContext)
+// Args (windowIndex, windowTitle) kept for backward compatibility with existing renderer calls
 ipcMain.handle('get-mail-window-context', async (event, windowIndex, windowTitle) => {
   return await captureMailContext();
 });

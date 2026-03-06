@@ -491,7 +491,9 @@ context.showDraftReply = shouldShowDraftReply(context);
 
 ---
 
-## 5. Phase 3 — UI Refactoring
+## 5. Phase 3 — UI Refactoring ✅ DONE
+
+**Status:** Implemented and reviewed. Universal context indicator, Draft Reply visibility gating, loadContext/updateContext replacing Mail-only methods.
 
 **Goal:** Update the renderer (HTML + JS) to use the new universal context system. Replace the Mail-only context indicator with a universal one. Keep existing 4 quick action buttons, only hide Draft Reply when not Mail.
 
@@ -782,7 +784,9 @@ Update refresh button binding to call `this.loadContext()`.
 
 ---
 
-## 6. Phase 4 — Apply-Back Mechanism
+## 6. Phase 4 — Apply-Back Mechanism ✅ DONE
+
+**Status:** Implemented and reviewed. Three-tier fallback (native/paste/clipboard), sanitizeAppName for injection prevention, waitForAppFrontmost polling, isAppRunning validation.
 
 **Goal:** Implement the "Apply" button to insert AI-generated results back into the source application. Universal — works with any app, not just Mail.
 
@@ -941,7 +945,9 @@ async applyResult() {
 
 ---
 
-## 7. Phase 5 — Prompts & Settings Update
+## 7. Phase 5 — Prompts & Settings Update ✅ DONE
+
+**Status:** Implemented and reviewed. System prompt gated by context.source === 'mail', default updated to "text processing".
 
 **Goal:** Update the system prompt logic so Mail-specific prompt additions only fire for Mail contexts. Update the base system prompt default. No new settings fields — existing Settings UI stays exactly as it is.
 

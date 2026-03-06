@@ -5,9 +5,9 @@ When tests are implemented, use this as the specification.
 
 ---
 
-## 1. Unit Tests: `src/main/contextDetector.js`
+## 1. Unit Tests: `src/main/contextDetector.js` ✅ IMPLEMENTED
 
-Pure functions, no mocking needed.
+Pure functions, no mocking needed. All tests passing (66 total across contextDetector + modelManager).
 
 ### `isMail(appName)`
 | Input | Expected |
@@ -143,7 +143,7 @@ Clipboard safety: JS owns save/restore via Electron clipboard API. AppleScript o
 
 ---
 
-## 7. Test Infrastructure
+## 7. Test Infrastructure ✅ IMPLEMENTED
 
 ### Framework & Configuration
 
@@ -151,6 +151,7 @@ Clipboard safety: JS owns save/restore via Electron clipboard API. AppleScript o
 - **Environment**: Node (not jsdom — no renderer tests yet)
 - **Shared mocks**: `electron`, `electron-store` module mocks
 - **Test root**: `tests/` at project root
+- **Status**: 66 tests passing (contextDetector: 30, modelManager: 36)
 
 ### File Structure
 
@@ -168,9 +169,9 @@ tests/
 
 ### Implementation Priority
 
-1. Jest config + shared mocks
-2. `contextDetector.test.js` — pure functions, Section 1 spec
-3. `modelManager.test.js` — config loading, merging, CRUD, query methods
+1. ~~Jest config + shared mocks~~ ✅ Done
+2. ~~`contextDetector.test.js` — pure functions, Section 1 spec~~ ✅ Done (30 tests)
+3. ~~`modelManager.test.js` — config loading, merging, CRUD, query methods~~ ✅ Done (36 tests)
 
 ---
 

@@ -771,6 +771,8 @@ ipcMain.handle('capture-context', async () => {
       context.text = context.text.substring(0, MAX_CONTEXT_TEXT_LENGTH);
       context.truncated = true;
     }
+    // Backward compat: textLength = post-truncation length
+    context.textLength = context.text.length;
   } catch (error) {
     console.error('Context capture failed:', error);
   }
